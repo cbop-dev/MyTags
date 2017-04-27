@@ -20,7 +20,10 @@ class MyTagsDialog(tkSimpleDialog.Dialog):
 		#self.filename=filename
 		self.master = master
 		self.filenames = filenames
-		self.tags = []
+		self.tags = {}
+		for f in filenames:
+			self.tags[f] = MyTagsUtils.getMetaFileName(f)
+			
 		tkSimpleDialog.Dialog.__init__(self, master, "MyTags Tools")
 		
 		#print "init: self.filename = self.filename"
@@ -40,7 +43,11 @@ class MyTagsDialog(tkSimpleDialog.Dialog):
 		
 		self.list = ScrolledMultiListbox(master, scrollmode="auto", width=800)
 		self.list.listbox.configure(selectmode="multiple", columns=("File/folder name", "Tags"), width=0, expandcolumns=(0,1), height=10)
-		self.list.listbox.insert(0, "fred barney ruble funny dude running around alldaylong", ("tag3", "tag2"))
+		
+		for i in self.tags:
+			self.list.listbox.insert(0, i, self.tags[i])
+			#self.list.listbox.insert(0, "fred barney ruble funny dude running around alldaylong", ("tag3", "tag2"))
+			
 		self.list.listbox.column_configure(0, weight=2, width=400)
 		self.list.listbox.column_configure(1, weight=1)
 				
