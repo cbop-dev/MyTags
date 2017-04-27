@@ -10,11 +10,11 @@ This is a work in progress! A usable version has not yet been reached.
 Requirements:
 -------------
 * Python 2.7.x
-* pyjq: https://pypi.python.org/pypi/pyjq
-* jq: https://stedolan.github.io/jq/
+* jq: https://stedolan.github.io/jq/ (Fast JSON parser)
 * Python libraries:
   * Tkinter: https://wiki.python.org/moin/TkInter
   * TkTreectrl: http://tkintertreectrl.sourceforge.net/
+  * pyjq: https://pypi.python.org/pypi/pyjq (jq binding for python)
 
 
 Motivation:
