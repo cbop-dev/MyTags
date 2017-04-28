@@ -15,5 +15,5 @@ import mytags.MyTagsUtils as mt
 
 import mytagtests
 
-mytagtests.myTagTests.run()
+mytagtests.myTagTests().runTest()
 
