@@ -32,7 +32,7 @@ Installation (incomplete)
 
 Screenshot:
 -----------
-![MyTags Nemo Extension screenshot](file:https://github.com/cbop-dev/MyTags/blob/master/images/screenshot2.png "MyTags Nemo Extension shot 1")
+![MyTags Nemo Extension screenshot](https://github.com/cbop-dev/MyTags/blob/master/images/screenshot2.png "MyTags Nemo Extension shot 1")
 
 Motivation:
 -----------
