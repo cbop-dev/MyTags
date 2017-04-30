@@ -8,9 +8,12 @@ import tkMessageBox
 
 gi.require_version('Nemo', '3.0')
 from gi.repository import GObject, Nemo
-mytagsLibDir = "/home/cbrannan/dev/git-projects/MyTags/src"
-sys.path.append(mytagsLibDir)
-print sys.path
+
+''' The "mytags" dir, under "src" in the repo, must be in your python path. 
+	Either copy the directory to one already in your $PYTHONPATH env variable (on Linux), or add it below and uncomment the next two lines.
+'''
+#mytagsLibDir = "/path/to/mytags/src"
+#sys.path.append(mytagsLibDir)
 
 import mytags.MyTagsUtils as mt
 
