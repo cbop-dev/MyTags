@@ -17,7 +17,7 @@ import mytags.MyTagsUtils as mt
 def getCleanFilenames(files):
 	cleanedFilenames = []
 	for thefile in files:
-		cleanedFilenames.insert(0,urllib.unquote(files[0].get_uri()[7:]))
+		cleanedFilenames.insert(0,urllib.unquote(thefile.get_uri()[7:]))
 	return cleanedFilenames
 
 class ColumnExtension(GObject.GObject, Nemo.ColumnProvider, Nemo.InfoProvider):
@@ -43,67 +43,102 @@ class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
 	def __init__(self):
 		pass
 
-	
-
-	def menu_addtags(self, menu, files):
-		cleanedFilenames = getCleanFilenames(files)
-		
+	def simpleDialog(self, title, label):
 		root = Tk()
 		ws = root.winfo_screenwidth() # width of the screen
 		hs = root.winfo_screenheight() # height of the screen
 
-	# calculate x and y coordinates for the Tk root window
-	#x = (ws/2) - (w/2)
-	#y = (hs/2) - (h/2)
+		# calculate x and y coordinates for the Tk root window
+		#x = (ws/2) - (w/2)
+		#y = (hs/2) - (h/2)
 
-	# set the dimensions of the screen 
-	# and where it is placed
-	#root.geometry('%dx%d+%d+%d' % (w, h, x, y))
-	#root.geometry('+20+10')
+		# set the dimensions of the screen 
+		# and where it is placed
+		#root.geometry('%dx%d+%d+%d' % (w, h, x, y))
+		#root.geometry('+20+10')
 		root.geometry('+%d+%d' % (ws/2, hs/2))
 		root.update()
 		root.withdraw()	
-		tagString = tkSimpleDialog.askstring("Add Tags", "Enter tags to add (separated by commas):", parent=root)
+		textInput = tkSimpleDialog.askstring(title, label, parent=root)
 		root.destroy()
-		#tags = tagString.split(",")
-		tags = [t.strip() for t in tagString.split(",")]
-		print "attempting to add [" + "|".join(tags) + " to " + ";".join(cleanedFilenames)
-		mt.addTagsBulk(cleanedFilenames, tags)
-
-	def menu_deletetags(self, menu, files):
-		cleanedFilenames = getCleanFilenames(files)
+		return textInput
+	
+	def simpleConfirm(self, title, message):
 		root = Tk()
-
+		ws = root.winfo_screenwidth() # width of the screen
+		hs = root.winfo_screenheight() # height of the screen
+		root.geometry('+%d+%d' % (ws/2, hs/2))
+		root.update()
+		root.withdraw()	
+		result = tkMessageBox.askyesno(title, message, parent=root)
+		root.destroy()
+		return result
+		
+	def warning(self, title, label):
+		root = Tk()
 		ws = root.winfo_screenwidth() # width of the screen
 		hs = root.winfo_screenheight() # height of the screen
 
-	# calculate x and y coordinates for the Tk root window
-	#x = (ws/2) - (w/2)
-	#y = (hs/2) - (h/2)
-
-	# set the dimensions of the screen 
-	# and where it is placed
-	#root.geometry('%dx%d+%d+%d' % (w, h, x, y))
-	#root.geometry('+20+10')
+		#root.geometry('+20+10')
 		root.geometry('+%d+%d' % (ws/2, hs/2))
 		root.update()
-		root.withdraw()		
-		
-		tagString = tkSimpleDialog.askstring("Remove Tags", "Enter tags to remove (separated by commas):", parent=root)
-		tags = [t.strip() for t in tagString.split(",")]
+		root.withdraw()	
+		tkMessageBox.showwarning(title, label, parent=root)
+		root.destroy()
+	
+	def menu_erasetags(self, menu, files):
+		cleanedFilenames = getCleanFilenames(files)
+		if (self.simpleConfirm("Erase Tags", "Remove ALL tags from selected files?")):
+			for f in cleanedFilenames:
+				mt.removeAllTags(f)
+				
+	
+	def menu_replacetags(self, menu, files):
+		cleanedFilenames = getCleanFilenames(files)
+			
+		tagString = self.simpleDialog("Replace Tags", "All Existing tags will be remove from files. Enter tags to replace them with:")
+		tags = ''
+		if (tagString):
+			tags = [t.strip() for t in tagString.split(",")]
 		#tkMessageBox.showinfo("Delete Tags", "Deleting tags: " + "|".join(tags), parent=root)
 		
-		failed = []
-		for f in cleanedFilenames:
-			if not mt.removeSomeTags(f, tags):
-				failed.insert(0, f)
+		if (tags):
+			failed = []
+			for f in cleanedFilenames:
+				if not mt.replaceTags(f, tags):
+					failed.insert(0, f)
+			
+			if failed:
+				self.showwarning("Error", "Attempting to rplace tags from the following files failed: \n" + "\n".join(failed))
 		
-		if failed:
-			tkMessageBox.showwarning("Error", "Attempting to remove tags from the following files failed: \n" + "\n".join(failed), parent=root)		
-		root.destroy()
+	def menu_addtags(self, menu, files):
+		cleanedFilenames = getCleanFilenames(files)
+		
+		tagString = self.simpleDialog("Add Tags", "Enter tags to add (separated by commas):")
+			
 		#tags = tagString.split(",")
+		tags = [t.strip() for t in tagString.split(",")]
+		if (tags):
+			print "attempting to add [" + "|".join(tags) + "] to " + ";".join(cleanedFilenames)
+			mt.addTagsBulk(cleanedFilenames, tags)
+
+	def menu_deletetags(self, menu, files):
+		cleanedFilenames = getCleanFilenames(files)
+			
+		tagString = self.simpleDialog("Remove Tags", "Enter tags to remove (separated by commas):")
+		tags = []
+		if (tagString):
+			tags = [t.strip() for t in tagString.split(",")]
+		#tkMessageBox.showinfo("Delete Tags", "Deleting tags: " + "|".join(tags), parent=root)
 		
-		
+		if (tags):
+			failed = []
+			for f in cleanedFilenames:
+				if not mt.removeSomeTags(f, tags):
+					failed.insert(0, f)
+			
+			if failed:
+				self.showwarning("Error", "Attempting to remove tags from the following files failed: \n" + "\n".join(failed))
 
 		
 	def get_file_items(self, window, files):
@@ -125,9 +160,21 @@ class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
 										 tip='',
 										 icon='')
 		sub_menuitem2.connect('activate', self.menu_deletetags, files)  
+		sub_menuitem3 = Nemo.MenuItem(name='MyTags::replace', 
+										 label='ReplaceTags', 
+										 tip='',
+										 icon='')
+		sub_menuitem3.connect('activate', self.menu_replacetags, files)  
+		sub_menuitem4 = Nemo.MenuItem(name='MyTags::erase', 
+										 label='Erase Tags', 
+										 tip='',
+										 icon='')
+		sub_menuitem4.connect('activate', self.menu_erasetags, files)  
 		submenu.append_item(sub_menuitem)
 		submenu.append_item(sub_menuitem2)
-
+		submenu.append_item(sub_menuitem3)
+		submenu.append_item(sub_menuitem4)
+		
 		return top_menuitem,
 
 

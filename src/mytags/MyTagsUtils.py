@@ -138,7 +138,8 @@ def addTagsBulk(filenames, tags):
 		
 
 def removeAllTags(filename):
-	## consider: just create bare json file with  empty dictionary "appName":"MyTags"
+	## Create bare json file with  empty dictionary "appName":"MyTags"
+	# consider another option: just delete the metafile!
 	return write(getMetaFileName(filename), __generateJSON([]))
 	
 def removeSomeTags(filename, removeTags):
@@ -203,10 +204,25 @@ def getMetaFileName(filename):
 	return parent + "/.ts/" + base + ".json"
 
 ''' updateTags: removes all tags from, and then add the input tags
+	return (success, tag): success == true if all went well; false otherwise, and "tag" is set to first invalid tag if that was the reason for failure
 '''
-
 def replaceTags(filename, tags):
-	return False
+	metafile = getMetaFileName(filename)
+	
+	for t in tags:
+		if not isValidTag(t):
+			return (False, t)
+		
+	# Should we check to see if file exists before doing anything else? If so, uncomment the next two lines:
+	# If not os.path.isfile(f):
+	#	failedFiles.append(f)
+			
+	content = __generateJSON(tags)
+		
+	if not write(metafile, content):
+		return (False, None)
+	
+	return (True, None)	
 
 
 	
