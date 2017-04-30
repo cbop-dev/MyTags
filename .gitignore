@@ -1,2 +1,5 @@
 *.pyc
 *.egg
+tests/testdata/**
+
+tests/testdata/

@@ -1,10 +1,8 @@
+#!/usr/bin/python
 import unittest
 import sys
 import os
 #import os.path
-
-
-
 
 paths = ["src","lib", "tests"]
 for i in paths:
