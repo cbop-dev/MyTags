@@ -4,7 +4,11 @@ This is a set of tools, mostly in python, (eventually) providing basic functiona
 
 I (cbop-dev) hope this project will soon include a functional "Nemo Action" GUI window for use with Linux's Nemo file manager, as well as index/search integration with the Recoll engine (https://www.lesbonscomptes.com/recoll/). 
 
-This is a work in progress! The initial working version, v0.1.0, is now released. It includes python library (mytags.MyTagsUtils), which is then very simply integrated with with only basic functionality ("Add Tags", "Delete Tags") into Nemo as a file option submenu ("My Tags").
+This is a work in progress! 
+
+UPDATE:
+------
+Version 0.1.1, is now released. It includes python library (mytags.MyTagsUtils), which is then very simply integrated with with only basic functionality ("Add Tags", "Delete Tags", "Replace Tags", "Erase Tags") into Nemo as a file option submenu ("My Tags").
 
 
 Requirements:
