@@ -21,6 +21,18 @@ Requirements:
   * pyjq: https://pypi.python.org/pypi/pyjq (jq binding for python)
 There may be other requirements that I've overlooked...
 
+Installation (incomplete)
+-------------------------
+1. Download/Git the repository. 
+2. Copy the "src/mytags/nemo/mytags-nemo-extension" to "~/.local/share/nemo-python/extensions" (or create this directory if it does not exist). 
+3. Copy the "mytags" folder (found in the "src" directory) to a path where python libraries are stored, or add the "src" folder it to your PYTHONPATH environment variable before running Nemo (e.g, in Bash: "env PYTHONPATH=$PYTHONPATH:/home/user/git/MyTags/src" nemo).
+4. Close all instances of Nemo ("nemo -q"), then run nemo with the correct environment settings (e.g, 'env PYTHONPATH="$PYTHONPATH:/home/user/git/MyTags/src', as mentioned in step 3). 
+  * For development or debugging, try running Nemo with "gdb" tool: "env PYTHONPATH=$PYTHONPATH:/home/user/git/MyTags/src" gdb nemo 
+5. Select one or more files, then right-click, and try the "MyTags" submenu items. None of these will change your files themselves; these functions only mess with metafiles in ".ts" folders in the same directory.
+
+Screenshot:
+-----------
+![MyTags Nemo Extension screenshot](file:https://github.com/cbop-dev/MyTags/blob/master/images/screenshot2.png "MyTags Nemo Extension shot 1")
 
 Motivation:
 -----------
