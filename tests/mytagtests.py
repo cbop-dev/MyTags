@@ -21,8 +21,8 @@ class myTagTests(object):
 				 MetaFileTest,
 				 getTagsTest,
 				 addTagsTest, 
-				 DeleteTagsTest
-#				 ReplaceTagsTest,
+				 DeleteTagsTest,
+				 ReplaceTagsTest
 				 #FileOperationsTest
 				 
 				 ]
@@ -111,40 +111,46 @@ class MetaFileTest(unittest.TestCase):
 		for i in self.fileLookup:
 			self.assertTrue(mt.getMetaFileName(i) == self.fileLookup[i], "key = "+ i + ", value = " + self.fileLookup[i] + ", but getMetafile = " + mt.getMetaFileName(i))
 
-class addTagsTest(unittest.TestCase):
+class TestWithFiles(unittest.TestCase):
+	#default files. Can be changed by re-assigning value of this variable, or by using setFileDict() below.
+	testFilesTags = {testdatadir + "/file1" : [[], ""],
+				testdatadir + "/testfile 2" : [
+					["waiting","high","20170426","test"],
+					'{"tags":[{"title":"waiting","type":"sidecar","style":""},{"title":"high","type":"sidecar","style":"color: #ffffff !important; background-color: #ff7537 !important;"},{"title":"20170426","type":"sidecar","style":""},{"title":"test","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"}],"appVersionCreated":"2.6.0","appName":"TagSpaces","appVersionUpdated":"2.6.0","lastUpdated":"2017-04-27T03:46:04.342Z"}'
+					],
+				 testdatadir +"/testfilename.extension" : [
+					["low", "long_qw@$!@$", "longe-tag-with-several-hyphens"],
+					'{"tags":[{"title":"low","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"},{"title":"long_qw@$!@$","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"},{"title":"longe-tag-with-several-hyphens","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"}],"appVersionCreated":"2.6.0","appName":"TagSpaces","appVersionUpdated":"2.6.0","lastUpdated":"2017-04-28T03:11:00.949Z"}'
+					],
+				testdatadir +"/malformed.meta" : [
+					[],
+					'{"tags":[{"title":"low","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"},{"title":"long_qw@$!@$","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"},{"title":"longe-tag-with-several-hyphens","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"}],"appVersionCreated":"2.6.0","appName":"TagSpaces","appVersionUpdated":"2.6.0","lastUpdated":"2017-04-28T03:11:00.949Z"'
+					],
+				testdatadir +"/malformed.meta2" : [
+					[],
+					'not JSON'
+					]
+				 }
 	
+	def setFilesDict(filesDict):
+		self.testFilesTags = dict(filesDict)
+		
 	def setUp(self):
-		# load list of files to check, and tags to add	
-		# Files should include some with no tags; some with tags which will not be added; some with tags that will be added
-		#print "realpath: " + os.path.realpath(__file__)
 		self.assertTrue(mt.checkDir(testdatadir))
-		self.testFilesTags = {testdatadir + "/file1" : [[], ""],
-					 testdatadir + "/testfile 2" : [
-						["waiting","high","20170426","test"],
-						'{"tags":[{"title":"waiting","type":"sidecar","style":""},{"title":"high","type":"sidecar","style":"color: #ffffff !important; background-color: #ff7537 !important;"},{"title":"20170426","type":"sidecar","style":""},{"title":"test","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"}],"appVersionCreated":"2.6.0","appName":"TagSpaces","appVersionUpdated":"2.6.0","lastUpdated":"2017-04-27T03:46:04.342Z"}'
-						],
-					 testdatadir +"/testfilename.extension" : [
-						["low", "long_qw@$!@$", "longe-tag-with-several-hyphens"],
-						'{"tags":[{"title":"low","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"},{"title":"long_qw@$!@$","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"},{"title":"longe-tag-with-several-hyphens","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"}],"appVersionCreated":"2.6.0","appName":"TagSpaces","appVersionUpdated":"2.6.0","lastUpdated":"2017-04-28T03:11:00.949Z"}'
-						],
-					testdatadir +"/malformed.meta" : [
-						[],
-						'{"tags":[{"title":"low","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"},{"title":"long_qw@$!@$","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"},{"title":"longe-tag-with-several-hyphens","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"}],"appVersionCreated":"2.6.0","appName":"TagSpaces","appVersionUpdated":"2.6.0","lastUpdated":"2017-04-28T03:11:00.949Z"'
-						],
-					testdatadir +"/malformed.meta2" : [
-						[],
-						'not JSON'
-						]
-					 }
-		#self.jSONfileData = {}
-		#self.jSONfileData["file1.json"] = ""
-		#self.jSONfileData["testfile 2.json"] = "{\"tags\":[{\"title\":\"waiting\",\"type\":\"sidecar\",\"style\":\"\"},{\"title\":\"high\",\"type\":\"sidecar\",\"style\":\"color: #ffffff !important; background-color: #ff7537 !important;\"},{\"title\":\"20170426\",\"type\":\"sidecar\",\"style\":\"\"},{\"title\":\"test\",\"type\":\"sidecar\",\"style\":\"color: #ffffff !important; background-color: #008000 !important;\"}],\"appVersionCreated\":\"2.6.0\",\"appName\":\"TagSpaces\",\"appVersionUpdated\":\"2.6.0\",\"lastUpdated\":\"2017-04-27T03:46:04.342Z\"}"
 		
 		for filename, values in self.testFilesTags.items():
-			mt.write(filename, "Test File for addTagsTest")
-			mt.write(os.path.dirname(filename) + "/.ts/" + os.path.basename(filename) + ".json", values[1])
+			mt.write(filename, "Test file!")
+			success = mt.write(mt.getMetaFileName(filename), values[1])
+			
+			if not success:
+				raise Exception("Could not set up file " + filename)
 		
+	
+	def tearDown(self):
+		shutil.rmtree(testdatadir)
 		
+class addTagsTest(TestWithFiles):
+	
 	def test1_SimpleAdd(self):
 		tags = ["tag1","tag2", "tag3", "tag7"]
 		(success,failures) = mt.addTags(testdatadir + "/file12", tags)
@@ -210,16 +216,9 @@ class addTagsTest(unittest.TestCase):
 		mt.addTags(thedir, tags)
 		self.assertTrue(set(mt.getTags(thedir)) == set(tags), mt.getTags(thedir))
 	
-	def tearDown(self):
-		shutil.rmtree(testdatadir)
 	
-class DeleteTagsTest(unittest.TestCase):
-	def setUp(self):
-		# load list of files to check, and tags to add	
-		# Files should include some with no tags; some with tags which will not be added; some with tags that will be added
-		#print "realpath: " + os.path.realpath(__file__)
-		self.assertTrue(mt.checkDir(testdatadir))
-		self.testFilesTags = {testdatadir + "/file1" : [[], ""],
+class DeleteTagsTest(TestWithFiles):
+	testFilesTags = {testdatadir + "/file1" : [[], ""],
 					 testdatadir + "/testfile 2" : [
 						["waiting","high","20170426","test"],
 						'{"tags":[{"title":"waiting","type":"sidecar","style":""},{"title":"high","type":"sidecar","style":"color: #ffffff !important; background-color: #ff7537 !important;"},{"title":"20170426","type":"sidecar","style":""},{"title":"test","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"}],"appVersionCreated":"2.6.0","appName":"TagSpaces","appVersionUpdated":"2.6.0","lastUpdated":"2017-04-27T03:46:04.342Z"}'
@@ -233,17 +232,6 @@ class DeleteTagsTest(unittest.TestCase):
 						'{"tags":[{"title":"low","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"},{"title":"long_qw@$!@$","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"},{"title":"longe-tag-with-several-hyphens","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"}],"appVersionCreated":"2.6.0","appName":"TagSpaces","appVersionUpdated":"2.6.0","lastUpdated":"2017-04-28T03:11:00.949Z"'
 						]
 					 }
-		#self.jSONfileData = {}
-		#self.jSONfileData["file1.json"] = ""
-		#self.jSONfileData["testfile 2.json"] = "{\"tags\":[{\"title\":\"waiting\",\"type\":\"sidecar\",\"style\":\"\"},{\"title\":\"high\",\"type\":\"sidecar\",\"style\":\"color: #ffffff !important; background-color: #ff7537 !important;\"},{\"title\":\"20170426\",\"type\":\"sidecar\",\"style\":\"\"},{\"title\":\"test\",\"type\":\"sidecar\",\"style\":\"color: #ffffff !important; background-color: #008000 !important;\"}],\"appVersionCreated\":\"2.6.0\",\"appName\":\"TagSpaces\",\"appVersionUpdated\":\"2.6.0\",\"lastUpdated\":\"2017-04-27T03:46:04.342Z\"}"
-		
-		for filename, values in self.testFilesTags.items():
-			mt.write(filename, "Test file!")
-			success = mt.write(mt.getMetaFileName(filename), values[1])
-			
-		#	print "created file " + filename + " and its metafile with data: \n\n" +values[1] + "\n"
-			if not success:
-				raise Exception("Could not set up file " + filename)
 			
 	def test8_removeAllTags(self):	
 		for filename, values in self.testFilesTags.items():			
@@ -272,13 +260,16 @@ class DeleteTagsTest(unittest.TestCase):
 			self.assertTrue(actualTags == set(oTags - removeTags), "Tried to remove (" + "|".join(removeTags) + ") from " + filename + ",\n 	but got: (" + "|".join(actualTags) + ")")
 			for t in actualTags:
 				self.assertFalse(t in removeTags, filename)
-	def tearDown(self):
-		shutil.rmtree(testdatadir)
 		
 
-class ReplaceTagsTest(unittest.TestCase):
+class ReplaceTagsTest(TestWithFiles):
+	
 	def test1_replaceTags(self):
-		self.assertTrue(False, "need to implement replaceTags()")
+		tags = ["faith", "Hope", "charity!", "something else", "@nevermore"]
+		
+		for filename, values in self.testFilesTags.items():
+			self.assertTrue(mt.replaceTags(filename, tags), filename)
+			self.assertTrue(set(mt.getTags(filename)) == set(tags))
 		
 class FileOperationsTest(unittest.TestCase):
 	def test1_moveFile(self):
