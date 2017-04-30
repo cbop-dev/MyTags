@@ -2,7 +2,7 @@ MyTags
 ========
 This is a set of tools, mostly in python, (eventually) providing basic functionality for a tagging files in a cross-platform way that is compatible with TagSpaces "sidecar" metafiles (http://tagspaces.org). A file's (or folder's) tags are stored in a JSON "sidecar" metafile in the .ts directory of the file's (or folder's) parent directory; each file's metafile has the same name as its originating file with an appended ".json" extension. This is being developed on Linux (Mint 18), but with the hopes that it could be usable across platforms.
 
-I (cbop-dev) hope this project will soon include a functional "Nemo Action" GUI window for use with Linux's Nemo file manager, as well as index/search integration with the Recoll engine (https://www.lesbonscomptes.com/recoll/). 
+This project is initially functional with the Nemo file manager (tested on version 3.2.2), using the nemo-python package to extend it (mytags-nemo-extension.py goes into ~/.local/share/nemo-python/extensions, and the src directory must be in your PYTHONPATH environment variable).  Eventually a module will offer index/search integration with the Recoll engine (https://www.lesbonscomptes.com/recoll/). 
 
 This is a work in progress! 
 
@@ -37,6 +37,7 @@ TO-DO:
 * Recoll indexing integration
 * Test on other Linux platforms
 * Integrate with Windows?? (low priority)
+* README: installation instructions
 
 
 
