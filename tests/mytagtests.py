@@ -4,6 +4,8 @@ import os
 import logging
 import shutil
 import mytags.MyTagsUtils as mt
+from stat import  S_IWUSR, S_IREAD, S_IRUSR, S_IXUSR
+import errno
 
 testsdir = os.path.dirname(os.path.realpath(__file__))
 testdatadir = testsdir + "/" + "testdata"
@@ -22,8 +24,8 @@ class myTagTests(object):
 				 getTagsTest,
 				 addTagsTest, 
 				 DeleteTagsTest,
-				 ReplaceTagsTest
-				 #FileOperationsTest
+				 ReplaceTagsTest,
+				 FileOperationsTest
 				 
 				 ]
 		
@@ -271,9 +273,58 @@ class ReplaceTagsTest(TestWithFiles):
 			self.assertTrue(mt.replaceTags(filename, tags), filename)
 			self.assertTrue(set(mt.getTags(filename)) == set(tags))
 		
-class FileOperationsTest(unittest.TestCase):
-	def test1_moveFile(self):
-		self.assertTrue(False, "need to implement moveFile()")
+class FileOperationsTest(TestWithFiles):
+	def test1_getParentFile(self):
+		self.validMetaFiles = {"/home/fred/jack/jill at hom/.ts/wilfredos/.ts/jacks.txt.json":"/home/fred/jack/jill at hom/.ts/wilfredos/jacks.txt",
+				 "/.ts/.ts.json":"/.ts",
+				 "/office/janson/docs/pdfs/.ts/.json.json":"/office/janson/docs/pdfs/.json"}
+		print mt
+		for meta, pFile in self.validMetaFiles.items():
+			self.assertTrue(mt.getParentFile(meta) == pFile, mt.getParentFile(meta) + " : " + pFile)
+			
+	def test2_deleteFile(self):
+		tDir = os.path.join(testdatadir, "tmp")
+		tFile = os.path.join(tDir, "file")
+		content = "content"
+		
+		os.mkdir(tDir)
+		self.assertTrue(mt.write(tFile, content))
+		
+		self.assertTrue(os.path.exists(tFile))
+		
+		self.assertTrue((True, None) == mt.addTags(tFile, ["test","tag2"]))
+		self.assertTrue(os.path.exists(mt.getMetaFileName(tFile)))
+		
+		self.assertTrue(mt.deleteFile(tFile))
+		self.assertFalse(os.path.exists(tFile))
+		self.assertFalse(os.path.exists(mt.getMetaFileName(tFile)))
+		
+		
+		self.assertTrue(mt.write(tFile, content))
+		
+		self.assertTrue(os.path.exists(tFile))
+		self.assertTrue((True, None) == mt.addTags(tFile, ["test","tag2"]))
+		os.chmod(tDir, S_IRUSR)
+		
+		caughtError = False
+		
+		try: 
+			mt.deleteFile(tFile)
+		except OSError as e:
+			print "Error rightly caught: " + os.strerror(e.errno)
+			if e.errno == errno.EACCES:
+				caughtError = True
+			else:
+				raise e
+		
+		self.assertTrue(caughtError)
+				
+		os.chmod(tDir, S_IWUSR|S_IRUSR|S_IXUSR)
+		
+	def rest2_moveFile(self):
+		self.assertTrue(True, "need to implement moveFile()")
+		
+	
 #print "hello!"
 #unittest.main()
 

@@ -199,10 +199,29 @@ def removeSomeTags(filename, removeTags):
 	
 	
 def getMetaFileName(filename):
-	(parent, base) = os.path.split(filename.rstrip('/'))
+	(parent, base) = os.path.split(filename.rstrip('/\''))
 	
 	return parent + "/.ts/" + base + ".json"
 
+
+def getParentFile(metafile):
+	(metafolder, json) = os.path.split(metafile.rstrip('/\\'))
+	#print "Meta folder after split: " + metafolder
+	#print "Json file after split: "+ json
+	#print " New path will be: " + metafolder[:-4] + "/" + json[:-5]
+	#print "	Metafolder: " +metafolder
+	#print "	metafolder[:-4]"  + metafolder[:-4]
+	filePath = ''
+	
+	(parent, ts) = os.path.split(metafolder)
+	
+	if ts == ".ts" and json.endswith(".json"):
+		filePath = os.path.join(parent, json[:-5])
+	
+	print "new Filepath IS: " + filePath
+	return filePath
+	
+	
 ''' updateTags: removes all tags from, and then add the input tags
 	return (success, tag): success == true if all went well; false otherwise, and "tag" is set to first invalid tag if that was the reason for failure
 '''
@@ -224,5 +243,51 @@ def replaceTags(filename, tags):
 	
 	return (True, None)	
 
+# Move a file, and its sidecar file, to the destination. 
+# Input:	srcFilePath - the full path and filename of the file to move.
+#			destFilePath - the full path and filename of the new location for the file
+#			safe - If true (default), will not overwrite the destFilePath if its exist; 
+#				   in such a case does nothing and returns False.
+# Return:	True if file moved successfuly. This means the srcFilePath no longer exists, but the same file is now at destFilePath. 
+#		    Its sidecar file would now be in the .ts directory of its new parent directory, renamed to match the new filename.
+# False:	False if it did not but did not throw error. 
+# Errors:   Any Exceptions (e.g., IOError) will be raised/passed to the calling block, and not handled/trapped here.
+def moveFile(srcFilePath, destFilePath, safe=True):
+	return False
 
+# Rename a file, in its parent directory. Will not overwrite existing files, but will raise Exception if src already exists.
+# Input:	srcFilePath - the full path and filename of the file to move.
+#			newname - the new *name* of the file, not including its path or parent. 
+# Return:	True if file copied successfuly
+# False:	False if it did not but did not throw error. 
+# Errors:   Any Exceptions (e.g., IOError) will be raised/passed to the calling block, and not handled/trapped here.
+def renameFile(srcFilePath, newname):
+	return False
+	
+# Copies a file, and its sidecar file (if it exists), to the destination. 
+# Input:	srcFilePath - the full path and filename of the file to move.
+#			destFilePath - the full path and filename of the new location for the file
+#			safe - If true (default), will not overwrite the destFilePath if its exist; 
+#				   in such a case does nothing and returns False.
+# Return:	True if file copied successfuly
+# False:	False if it did not but did not throw error. 
+# Errors:   Any Exceptions (e.g., IOError) will be raised/passed to the calling block, and not handled/trapped here.
+def copyFile(srcFilePath, destFilePath, safe=True):
+	return False
+	
+
+def deleteFile(filename):
+	os.remove(filename);
+	os.remove(getMetaFileName(filename))
+	return not os.path.exists(filename)
+
+# Deletes the given file's sidecar file. Returns True if the given file no longer has a sidecar file.
+# Returns False is sidecar file exists and it could not be removed. 
+def deleteMetaFile(filename):
+	return not os.exists(getMetaFileName(filename))
+
+# Returns list of .JSON metafiles (not parent files!) in the .ts folder of given "directory" that have no corresponding file in "directory'
+def findOrphanMetaFiles(directory):
+	return []
+	
 	
