@@ -6,6 +6,7 @@ import sys
 import json
 import filelock
 import shutil
+import portalocker
 
 #invalid character for tags, (loosely) borrowed from TagSpaces requirements, but allowing for spaces and underscores:
 invalidTagChars = "\"',:/\\|<>	"
@@ -70,6 +71,8 @@ def __checkMakeDir(dir):
 	return os.path.isdir(dir)
 			
 def __writeFile(filename, content):
+	
+	##TODO: use atomic writes instead of locks...
 	lock = getFileLock(filename)
 	if lock:
 		with lock:
@@ -112,6 +115,18 @@ def isValidTag(tag):
 			return 0
 	return 1
 
+def getTagsFromData(data, raw=True):
+	if (raw):
+		data=data.replace('\n', '').decode("utf-8-sig")
+	
+	tags = []
+	try:
+		json.loads(data)
+		tags = pyjq.all(data +  '| .tags[] | .title')  
+	except ValueError as e:
+		pass#print "getTags ERROR for file ("+filename+") caught pyjq value error using data: \n" + data + "\n"
+		#print e
+	return tags
 	
 def getTags(filename):
 	
@@ -121,22 +136,12 @@ def getTags(filename):
 	#print("getTags(" + filename + "), for " + metafile+ ":\n") 
 	if (os.path.isfile(metafile)):
 		with open(metafile, 'r') as myfile:
-			data=myfile.read().replace('\n', '').decode("utf-8-sig")
-			#tags = jq.jq(".").transform(data)
-			#print "data: " +data
-			try:
-				json.loads(data)
-				tags = pyjq.all(data +  '| .tags[] | .title')  
-			except ValueError as e:
-				#print "getTags ERROR for file ("+filename+") caught pyjq value error using data: \n" + data + "\n"
-				#print e
-				tags = []
-			
+			tags= getTagsFromData(myfile.read())		
 			#print("Tags: " + " ".join(tags))
-			myfile.close() 
 	else:
 		pass#print "\n\n\nGettags(" +filename +") could not load metafile."
 	#print "\ngetTags("+filename+"): \n" + "|".join(tags) + "<end tags>\n"
+	
 	return tags
 	
 ##
@@ -162,7 +167,7 @@ def addTags(filename, tags):
 		if not isValidTag(t):
 			return (False, t)
 	
-			
+
 	# Should we check to see if file exists before doing anything else? If so, uncomment the next two lines:
 	# If not os.path.isfile(f):
 	#	failedFiles.append(f)
