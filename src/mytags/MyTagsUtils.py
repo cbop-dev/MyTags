@@ -4,40 +4,90 @@ import fileinput
 import pyjq
 import sys
 import json
+import filelock
+import shutil
 
 #invalid character for tags, (loosely) borrowed from TagSpaces requirements, but allowing for spaces and underscores:
 invalidTagChars = "\"',:/\\|<>	"
 
+def trimPath(filename):
+	return filename.rstrip('/\\')
+
+def getMetaDir(filename):
+	return os.path.join(os.path.dirname(trimPath(filename)), '.ts')
+	
+def getMetaFileName(filePath):
+	filePath = trimPath(filePath)
+	return os.path.join(getMetaDir(filePath), os.path.basename(filePath) + ".json")
+
+
+def getParentFile(metafile):
+	(metafolder, json) = os.path.split(metafile.rstrip('/\\'))
+	#print "Meta folder after split: " + metafolder
+	#print "Json file after split: "+ json
+	#print " New path will be: " + metafolder[:-4] + "/" + json[:-5]
+	#print "	Metafolder: " +metafolder
+	#print "	metafolder[:-4]"  + metafolder[:-4]
+	filePath = ''
+	
+	(parent, ts) = os.path.split(metafolder)
+	
+	if ts == ".ts" and json.endswith(".json"):
+		filePath = os.path.join(parent, json[:-5])
+	
+	#print "new Filepath IS: " + filePath
+	return filePath
+	
 def write(filename, content):
 	return __writeFile(filename, content)
-
+	
 #Attempts to make directory, if one does not exist. Returns false only if requested directory is not usable.
 def checkDir(dir):
 	return __checkMakeDir(dir)
-		
+
+
+def getFileLockName(filename):
+	filename = trimPath(filename)
+	return os.path.join(getMetaDir(filename), os.path.basename(filename) + ".lock")
+	
+def getFileLock(filename):
+	filename = trimPath(filename)
+	lock = None
+	
+	if __checkMakeDir(getMetaDir(filename)):
+		lock = filelock.FileLock(getFileLockName(filename))
+	
+	#lock.filename = filename
+	return lock
+
 def __checkMakeDir(dir):
 	try: 
 		os.mkdir(dir)
 	except OSError:
 		if not os.path.isdir(dir):
 			return False
-			
+				
 	return os.path.isdir(dir)
 			
 def __writeFile(filename, content):
-	if not __checkMakeDir(os.path.dirname(filename)):
-		#print "_mt.__writefile(" +filename + ") b/c could not load parent dir"
-	
+	lock = getFileLock(filename)
+	if lock:
+		with lock:
+			if not __checkMakeDir(os.path.dirname(filename)):
+				#print "_mt.__writefile(" +filename + ") b/c could not load parent dir"
+			
+				return False
+			try:
+				with open(filename, "w") as f:
+					f.write(content)
+					f.close()
+			except IOError as e:
+				print "MyTagsUtils.__writeFile("+filename+" IOError: "
+				print e
+				return False
+		return True
+	else:
 		return False
-	try:
-		with open(filename, "w") as f:
-			f.write(content)
-			f.close()
-	except IOError as e:
-		print "MyTagsUtils.__writeFile("+filename+" IOError: "
-		print e
-		return False
-	return True
 
 def __generateJSON(tags):
 	content = '{"tags":['
@@ -198,29 +248,7 @@ def removeSomeTags(filename, removeTags):
 	
 	
 	
-def getMetaFileName(filename):
-	(parent, base) = os.path.split(filename.rstrip('/\''))
-	
-	return parent + "/.ts/" + base + ".json"
 
-
-def getParentFile(metafile):
-	(metafolder, json) = os.path.split(metafile.rstrip('/\\'))
-	#print "Meta folder after split: " + metafolder
-	#print "Json file after split: "+ json
-	#print " New path will be: " + metafolder[:-4] + "/" + json[:-5]
-	#print "	Metafolder: " +metafolder
-	#print "	metafolder[:-4]"  + metafolder[:-4]
-	filePath = ''
-	
-	(parent, ts) = os.path.split(metafolder)
-	
-	if ts == ".ts" and json.endswith(".json"):
-		filePath = os.path.join(parent, json[:-5])
-	
-	print "new Filepath IS: " + filePath
-	return filePath
-	
 	
 ''' updateTags: removes all tags from, and then add the input tags
 	return (success, tag): success == true if all went well; false otherwise, and "tag" is set to first invalid tag if that was the reason for failure
@@ -266,15 +294,35 @@ def renameFile(srcFilePath, newname):
 	
 # Copies a file, and its sidecar file (if it exists), to the destination. 
 # Input:	srcFilePath - the full path and filename of the file to move.
-#			destFilePath - the full path and filename of the new location for the file
+#			destFilePath - either the full path of the directory to copy the file, or the full path of the new filename.
 #			safe - If true (default), will not overwrite the destFilePath if its exist; 
 #				   in such a case does nothing and returns False.
 # Return:	True if file copied successfuly
 # False:	False if it did not but did not throw error. 
 # Errors:   Any Exceptions (e.g., IOError) will be raised/passed to the calling block, and not handled/trapped here.
 def copyFile(srcFilePath, destFilePath, safe=True):
-	return False
+	srcFilePath = trimPath(srcFilePath)
+	destFilePath = trimPath(destFilePath)
 	
+	if (os.path.isdir(destFilePath)):
+		destFilePath = os.path.join(os.path.dirname(destFilePath), os.path.basename(srcFilePath))
+		
+	if not safe or not os.path.exists(destFilePath):
+		
+		shutil.copy(srcFilePath, destFilePath)
+		metafile = getMetaFileName(srcFilePath)
+		if (os.path.exists(metafile)):
+			if (checkDir(getMetaDir(destFilePath))):
+				print "copying  " +metafile+ " to " + getMetaFileName(destFilePath)
+				shutil.copy(metafile, getMetaFileName(destFilePath))
+				return os.path.exists(getMetaFileName(destFilePath))
+			else:
+				print "Could not copy " +metafile + "to" +getMetaFileName(destFilePath)
+				return False
+		else:
+			return os.path.exists(destFilePath)
+	else:
+		return False
 
 def deleteFile(filename):
 	os.remove(filename);

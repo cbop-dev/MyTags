@@ -6,6 +6,7 @@ import shutil
 import mytags.MyTagsUtils as mt
 from stat import  S_IWUSR, S_IREAD, S_IRUSR, S_IXUSR
 import errno
+import filelock
 
 testsdir = os.path.dirname(os.path.realpath(__file__))
 testdatadir = testsdir + "/" + "testdata"
@@ -278,7 +279,6 @@ class FileOperationsTest(TestWithFiles):
 		self.validMetaFiles = {"/home/fred/jack/jill at hom/.ts/wilfredos/.ts/jacks.txt.json":"/home/fred/jack/jill at hom/.ts/wilfredos/jacks.txt",
 				 "/.ts/.ts.json":"/.ts",
 				 "/office/janson/docs/pdfs/.ts/.json.json":"/office/janson/docs/pdfs/.json"}
-		print mt
 		for meta, pFile in self.validMetaFiles.items():
 			self.assertTrue(mt.getParentFile(meta) == pFile, mt.getParentFile(meta) + " : " + pFile)
 			
@@ -311,7 +311,7 @@ class FileOperationsTest(TestWithFiles):
 		try: 
 			mt.deleteFile(tFile)
 		except OSError as e:
-			print "Error rightly caught: " + os.strerror(e.errno)
+			#print "Error rightly caught: " + os.strerror(e.errno)
 			if e.errno == errno.EACCES:
 				caughtError = True
 			else:
@@ -320,6 +320,39 @@ class FileOperationsTest(TestWithFiles):
 		self.assertTrue(caughtError)
 				
 		os.chmod(tDir, S_IWUSR|S_IRUSR|S_IXUSR)
+	
+	def test3_getFileLockName(self):
+		data = {"bob" : ".ts/bob.lock",
+				"/root/folder/file.lock":"/root/folder/.ts/file.lock.lock",
+				"/funny folder./sub directory/file.ext":"/funny folder./sub directory/.ts/file.ext.lock",
+				"relative folder/directory/jacks.txt":"relative folder/directory/.ts/jacks.txt.lock"}
+				
+		for f, flock in data.items():
+			self.assertTrue(flock == mt.getFileLockName(f))
+			
+	def test4_getFileLock(self):
+		for f in self.testFilesTags.keys():
+			lockname = mt.getFileLockName(f)
+			lock = mt.getFileLock(f)
+			if lock:
+				self.assertFalse(lock.is_locked)
+			with lock:
+				self.assertTrue(lock.is_locked)
+			self.assertFalse(lock.is_locked)
+	def test5_CopyfileTest(self):
+		tDir = os.path.join(testdatadir, "tmpss")
+		if mt.checkDir(tDir):
+			for f, values in self.testFilesTags.items():
+				mt.addTags(f, values[0])
+				self.assertTrue(set(mt.getTags(f)) == set(values[0]))
+				print "copying " + f + " to "+ tDir# +os.path.join(tDir, os.path.basename(f))
+				mt.copyFile(f, tDir)
+				mt.copyFile(f, os.path.join(tDir, os.path.basename(f)))
+				self.assertTrue(os.path.exists(os.path.join(tDir, os.path.basename(f))), tDir +":" +f)
+				s = set(mt.getTags(os.path.join(tDir, os.path.basename(f))))
+				s2 = set(values[0])
+				self.assertTrue( s ==  s2, str(s) + "\n" +str(s2))
+				
 		
 	def rest2_moveFile(self):
 		self.assertTrue(True, "need to implement moveFile()")

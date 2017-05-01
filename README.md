@@ -19,6 +19,8 @@ Requirements:
   * Tkinter: https://wiki.python.org/moin/TkInter
   * TkTreectrl: http://tkintertreectrl.sourceforge.net/
   * pyjq: https://pypi.python.org/pypi/pyjq (jq binding for python)
+  * https://filelock.readthedocs.io
+
 There may be other requirements that I've overlooked...
 
 Installation (incomplete)
