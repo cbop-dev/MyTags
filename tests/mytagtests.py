@@ -1,3 +1,7 @@
+''' Unit tests 
+	==========
+	NB: some of this is written using UNIX-like directory separators ("/"), and would need to be modified to work on windows.
+'''
 import unittest
 import sys
 import os
@@ -14,6 +18,46 @@ testdatadir = testsdir + "/" + "testdata"
 
 def loadTestFiles():
 	pass
+
+
+class TestWithFiles(unittest.TestCase):
+	#default files. Can be changed by re-assigning value of this variable, or by using setFileDict() below.
+	testFilesTags = {testdatadir + "/file1" : [[], ""],
+				testdatadir + "/testfile 2" : [
+					["waiting","high","20170426","test"],
+					'{"tags":[{"title":"waiting","type":"sidecar","style":""},{"title":"high","type":"sidecar","style":"color: #ffffff !important; background-color: #ff7537 !important;"},{"title":"20170426","type":"sidecar","style":""},{"title":"test","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"}],"appVersionCreated":"2.6.0","appName":"TagSpaces","appVersionUpdated":"2.6.0","lastUpdated":"2017-04-27T03:46:04.342Z"}'
+					],
+				 testdatadir +"/testfilename.extension" : [
+					["low", "long_qw@$!@$", "longe-tag-with-several-hyphens"],
+					'{"tags":[{"title":"low","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"},{"title":"long_qw@$!@$","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"},{"title":"longe-tag-with-several-hyphens","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"}],"appVersionCreated":"2.6.0","appName":"TagSpaces","appVersionUpdated":"2.6.0","lastUpdated":"2017-04-28T03:11:00.949Z"}'
+					],
+				testdatadir +"/malformed.meta" : [
+					[],
+					'{"tags":[{"title":"low","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"},{"title":"long_qw@$!@$","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"},{"title":"longe-tag-with-several-hyphens","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"}],"appVersionCreated":"2.6.0","appName":"TagSpaces","appVersionUpdated":"2.6.0","lastUpdated":"2017-04-28T03:11:00.949Z"'
+					],
+				testdatadir +"/malformed.meta2" : [
+					[],
+					'not JSON'
+					]
+				 }
+	
+	def setFilesDict(filesDict):
+		self.testFilesTags = dict(filesDict)
+		
+	def setUp(self):
+		self.assertTrue(mt.checkDir(testdatadir))
+		
+		for filename, values in self.testFilesTags.items():
+			mt.write(filename, "Test file!")
+			success = mt.write(mt.getMetaFileName(filename), values[1])
+			
+			if not success:
+				raise Exception("Could not set up file " + filename)
+		
+	
+	def tearDown(self):
+		shutil.rmtree(testdatadir)
+		pass
 
 class myTagTests(object):
 	
@@ -56,7 +100,7 @@ class validTagTest(unittest.TestCase):
 			self.assertFalse(mt.isValidTag(t), "isValid('" + t + ") returned true! Should be false." )
 		
 
-class getTagsTest(unittest.TestCase):
+class getTagsTest(TestWithFiles):
 		
 	def setUp(self):
 		
@@ -93,8 +137,7 @@ class getTagsTest(unittest.TestCase):
 			for t in self.fileTagAnswers[i]:
 				self.assertTrue(t in tags, "Tag " + t + " is not in getTags(" + i + ")!")
 	
-	def tearDown(self):
-		shutil.rmtree(testdatadir)
+
 	
 class MetaFileTest(unittest.TestCase):
 	def setUp(self):
@@ -114,43 +157,6 @@ class MetaFileTest(unittest.TestCase):
 		for i in self.fileLookup:
 			self.assertTrue(mt.getMetaFileName(i) == self.fileLookup[i], "key = "+ i + ", value = " + self.fileLookup[i] + ", but getMetafile = " + mt.getMetaFileName(i))
 
-class TestWithFiles(unittest.TestCase):
-	#default files. Can be changed by re-assigning value of this variable, or by using setFileDict() below.
-	testFilesTags = {testdatadir + "/file1" : [[], ""],
-				testdatadir + "/testfile 2" : [
-					["waiting","high","20170426","test"],
-					'{"tags":[{"title":"waiting","type":"sidecar","style":""},{"title":"high","type":"sidecar","style":"color: #ffffff !important; background-color: #ff7537 !important;"},{"title":"20170426","type":"sidecar","style":""},{"title":"test","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"}],"appVersionCreated":"2.6.0","appName":"TagSpaces","appVersionUpdated":"2.6.0","lastUpdated":"2017-04-27T03:46:04.342Z"}'
-					],
-				 testdatadir +"/testfilename.extension" : [
-					["low", "long_qw@$!@$", "longe-tag-with-several-hyphens"],
-					'{"tags":[{"title":"low","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"},{"title":"long_qw@$!@$","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"},{"title":"longe-tag-with-several-hyphens","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"}],"appVersionCreated":"2.6.0","appName":"TagSpaces","appVersionUpdated":"2.6.0","lastUpdated":"2017-04-28T03:11:00.949Z"}'
-					],
-				testdatadir +"/malformed.meta" : [
-					[],
-					'{"tags":[{"title":"low","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"},{"title":"long_qw@$!@$","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"},{"title":"longe-tag-with-several-hyphens","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"}],"appVersionCreated":"2.6.0","appName":"TagSpaces","appVersionUpdated":"2.6.0","lastUpdated":"2017-04-28T03:11:00.949Z"'
-					],
-				testdatadir +"/malformed.meta2" : [
-					[],
-					'not JSON'
-					]
-				 }
-	
-	def setFilesDict(filesDict):
-		self.testFilesTags = dict(filesDict)
-		
-	def setUp(self):
-		self.assertTrue(mt.checkDir(testdatadir))
-		
-		for filename, values in self.testFilesTags.items():
-			mt.write(filename, "Test file!")
-			success = mt.write(mt.getMetaFileName(filename), values[1])
-			
-			if not success:
-				raise Exception("Could not set up file " + filename)
-		
-	
-	def tearDown(self):
-		shutil.rmtree(testdatadir)
 		
 class addTagsTest(TestWithFiles):
 	
@@ -205,8 +211,8 @@ class addTagsTest(TestWithFiles):
 		#(success,failures) = mt.addTags(
 		for filename, values in self.testFilesTags.items():
 			mt.addTags(filename, values[0])
-			self.assertTrue(set(values[0]) == set(mt.getTags(filename)))
-			self.assertTrue(len(values[0]) == len(mt.getTags(filename)))
+			self.assertTrue(set(values[0]) == set(mt.getTags(filename)), filename + ": "+ str(values[0]) + " != " + str(mt.getTags(filename)))
+			self.assertTrue(len(values[0]) == len(mt.getTags(filename)), filename +": " +str(values[0]) + " != " + str(mt.getTags(filename)))
 			for t in values[0]:
 				self.assertTrue(t in mt.getTags(filename))
 	
@@ -272,9 +278,22 @@ class ReplaceTagsTest(TestWithFiles):
 		
 		for filename, values in self.testFilesTags.items():
 			self.assertTrue(mt.replaceTags(filename, tags), filename)
-			self.assertTrue(set(mt.getTags(filename)) == set(tags))
+			self.assertTrue(set(mt.getTags(filename)) == set(tags), filename + ", new tags: " + str(mt.getTags(filename)) + "; should be: "+ str(tags))
 		
 class FileOperationsTest(TestWithFiles):
+	def setUp(self):
+		TestWithFiles.setUp(self)
+		self.tDir = os.path.join(testdatadir, "tmp")
+		self.tFile = os.path.join(self.tDir, "file")
+		mt.checkDir(self.tDir)
+	def tearDown(self):
+		
+		try:
+			os.chmod(self.tDir, S_IWUSR|S_IRUSR|S_IXUSR)
+		except OSError as e:
+			pass
+		TestWithFiles.tearDown(self)
+		
 	def test1_getParentFile(self):
 		self.validMetaFiles = {"/home/fred/jack/jill at hom/.ts/wilfredos/.ts/jacks.txt.json":"/home/fred/jack/jill at hom/.ts/wilfredos/jacks.txt",
 				 "/.ts/.ts.json":"/.ts",
@@ -282,58 +301,61 @@ class FileOperationsTest(TestWithFiles):
 		for meta, pFile in self.validMetaFiles.items():
 			self.assertTrue(mt.getParentFile(meta) == pFile, mt.getParentFile(meta) + " : " + pFile)
 			
-	def test2_deleteFile(self):
-		tDir = os.path.join(testdatadir, "tmp")
-		tFile = os.path.join(tDir, "file")
-		content = "content"
+	def test2_deleteFile(self):		
+		content = "content"	
+		self.assertTrue(mt.write(self.tFile, content))
 		
-		os.mkdir(tDir)
-		self.assertTrue(mt.write(tFile, content))
+		self.assertTrue(os.path.exists(self.tFile))
 		
-		self.assertTrue(os.path.exists(tFile))
+		self.assertTrue((True, None) == mt.addTags(self.tFile, ["test","tag2"]))
+		self.assertTrue(os.path.exists(mt.getMetaFileName(self.tFile)))
 		
-		self.assertTrue((True, None) == mt.addTags(tFile, ["test","tag2"]))
-		self.assertTrue(os.path.exists(mt.getMetaFileName(tFile)))
+		self.assertTrue(mt.deleteFile(self.tFile))
+		self.assertFalse(os.path.exists(self.tFile))
+		self.assertFalse(os.path.exists(mt.getMetaFileName(self.tFile)))
+			
+		self.assertTrue(mt.write(self.tFile, content))
 		
-		self.assertTrue(mt.deleteFile(tFile))
-		self.assertFalse(os.path.exists(tFile))
-		self.assertFalse(os.path.exists(mt.getMetaFileName(tFile)))
-		
-		
-		self.assertTrue(mt.write(tFile, content))
-		
-		self.assertTrue(os.path.exists(tFile))
-		self.assertTrue((True, None) == mt.addTags(tFile, ["test","tag2"]))
-		os.chmod(tDir, S_IRUSR)
+		self.assertTrue(os.path.exists(self.tFile))
+		self.assertTrue((True, None) == mt.addTags(self.tFile, ["test","tag2"]))
+		os.chmod(self.tDir, S_IRUSR)
 		
 		caughtError = False
+		print "Entering try block"
 		
 		try: 
-			mt.deleteFile(tFile)
-		except OSError as e:
-			#print "Error rightly caught: " + os.strerror(e.errno)
-			if e.errno == errno.EACCES:
-				caughtError = True
-			else:
-				raise e
+			mt.deleteFile(self.tFile)
+		except (OSError, AttributeError) as e:
+			print e
+			print "Error rightly caught: " + str(e)
+			caughtError = True
+			#else:
+			#	raise e
 		
 		self.assertTrue(caughtError)
-				
-		os.chmod(tDir, S_IWUSR|S_IRUSR|S_IXUSR)
+		
+		os.chmod(self.tDir, S_IWUSR|S_IRUSR|S_IXUSR)
 	
-	def test3_getFileLockName(self):
+	def test2_deleteMetaFile(self):
+		for f in self.testFilesTags.keys():
+			self.assertTrue(os.path.exists(mt.getMetaFileName(f)))
+			mt.deleteMetaFile(f)
+			self.assertFalse(mt.getTags(f))
+			self.assertFalse(os.path.exists(mt.getMetaFileName(f)))
+			
+	def test3_getLockFileName(self):
 		data = {"bob" : ".ts/bob.lock",
 				"/root/folder/file.lock":"/root/folder/.ts/file.lock.lock",
 				"/funny folder./sub directory/file.ext":"/funny folder./sub directory/.ts/file.ext.lock",
 				"relative folder/directory/jacks.txt":"relative folder/directory/.ts/jacks.txt.lock"}
 				
 		for f, flock in data.items():
-			self.assertTrue(flock == mt.getFileLockName(f))
+			self.assertTrue(flock == mt.getLockFileName(f))
 			
-	def test4_getFileLock(self):
+	def test4_getLockFile(self):
 		for f in self.testFilesTags.keys():
-			lockname = mt.getFileLockName(f)
-			lock = mt.getFileLock(f)
+			lockname = mt.getLockFileName(f)
+			lock = mt.getLockFile(f)
 			if lock:
 				self.assertFalse(lock.is_locked)
 			with lock:
@@ -345,7 +367,7 @@ class FileOperationsTest(TestWithFiles):
 			for f, values in self.testFilesTags.items():
 				mt.addTags(f, values[0])
 				self.assertTrue(set(mt.getTags(f)) == set(values[0]))
-				print "copying " + f + " to "+ tDir# +os.path.join(tDir, os.path.basename(f))
+				#print "copying " + f + " to "+ tDir# +os.path.join(tDir, os.path.basename(f))
 				mt.copyFile(f, tDir)
 				mt.copyFile(f, os.path.join(tDir, os.path.basename(f)))
 				self.assertTrue(os.path.exists(os.path.join(tDir, os.path.basename(f))), tDir +":" +f)
@@ -354,8 +376,67 @@ class FileOperationsTest(TestWithFiles):
 				self.assertTrue( s ==  s2, str(s) + "\n" +str(s2))
 				
 		
-	def rest2_moveFile(self):
-		self.assertTrue(True, "need to implement moveFile()")
+	def test6_moveFile(self):
+		destDir = os.path.join(testdatadir, "moveFiles")
+		destFile = "/.nowhere/.somewhere/anywhere.ext/fred.txt"
+		destFile2 = os.path.join(testdatadir, "moveF/test/dir/yes.ds")
+		
+		for f, v in self.testFilesTags.items():
+			dest = os.path.join(os.path.dirname(f), os.path.join(destDir, os.path.basename(f)))
+			result = mt.moveFile(f,dest)
+			self.assertTrue(result != '')
+			self.assertFalse(os.path.exists(f))
+			self.assertTrue(os.path.exists(result))
+			self.assertTrue(set(mt.getTags(result)) == set(v[0]), result + ": " +str(mt.getTags(result)))
+			
+			#test with bad dest:
+			self.assertFalse(mt.moveFile(dest,destFile))
+			self.assertTrue(os.path.exists(dest))
+			self.assertTrue(set(mt.getTags(dest)) == set(v[0]), dest + ": " +str(mt.getTags(dest)))
+			
+			#move into existing dir:
+			destDir2 = os.path.join(testdatadir, "existingDir")
+			self.assertTrue(mt.checkDir(destDir2))
+			self.assertTrue(os.path.exists(destDir2) and os.path.isdir(destDir2))
+			
+			result = mt.moveFile(dest,destDir2)
+			self.assertFalse(result == '', "moveFile returned: " + result)
+			self.assertTrue(os.path.exists(result))
+			self.assertTrue(set(mt.getTags(result)) == set(v[0]))
+			
+			#move into non-existent parent: these should be created automacally:
+			destDir2 = os.path.join(testdatadir, "yetanoghterdir" + os.path.basename(result))
+			
+			dest3 = os.path.join(destDir2, "anotherfile.name")
+			if (os.path.exists(destDir2)):
+				shutil.rmtree(destDir2)
+				
+			result = mt.moveFile(result,dest3)
+			self.assertFalse(result == '', "moveFile returned: " + result)
+			self.assertTrue(os.path.exists(result))
+			self.assertTrue(set(mt.getTags(result)) == set(v[0]))
+
+	def test7_moveDirs(self):
+				
+		#move a directory!
+		tags = ["yes", "no", "directory"]
+		srcdir= os.path.join(testdatadir, "mvdirsrc-test")
+		destDir = os.path.join(testdatadir, "moveDirs")
+		
+		self.assertTrue(mt.checkDir(srcdir))
+		self.assertTrue(mt.addTags(srcdir, tags))
+		
+		result = mt.moveFile(srcdir,destDir)
+		self.assertTrue(result != '')
+		self.assertTrue(set(mt.getTags(destDir)) == set(tags))
+		self.assertTrue(os.path.exists(result))
+		self.assertFalse(os.path.exists(srcdir))
+		
+		self.assertTrue(set(mt.getTags(result)) == set(tags), "tags: " + str(mt.getTags(result)))
+		
+		
+			
+		#self.assertTrue(True, "need to implement moveFile()")
 		
 	
 #print "hello!"

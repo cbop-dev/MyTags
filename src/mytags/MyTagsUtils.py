@@ -38,7 +38,8 @@ def getParentFile(metafile):
 	
 	#print "new Filepath IS: " + filePath
 	return filePath
-	
+
+#Public wrapper for private __writeFile method
 def write(filename, content):
 	return __writeFile(filename, content)
 	
@@ -47,50 +48,56 @@ def checkDir(dir):
 	return __checkMakeDir(dir)
 
 
-def getFileLockName(filename):
+def getLockFileName(filename):
 	filename = trimPath(filename)
 	return os.path.join(getMetaDir(filename), os.path.basename(filename) + ".lock")
-	
-def getFileLock(filename):
+
+
+## A simple MyTags-specific lock on handling file operations for given file.
+## Creates a lockfile in the metafolder of the file's parent named <filename>.lock
+## This can be subsequently used with "with" statement block, or manually by using acquire() and release()
+## "filename" should only be the full pathname of the main file, NOT the (.json) metafile in the metafolder.
+def getLockFile(filename):
 	filename = trimPath(filename)
 	lock = None
 	
 	if __checkMakeDir(getMetaDir(filename)):
-		lock = filelock.FileLock(getFileLockName(filename))
+		lock = filelock.FileLock(getLockFileName(filename))
 	
 	#lock.filename = filename
 	return lock
 
 def __checkMakeDir(dir):
 	try: 
-		os.mkdir(dir)
-	except OSError:
-		if not os.path.isdir(dir):
-			return False
-				
+		os.makedirs(dir)
+	except OSError as e:
+		#print "checkDir failed for " +dir+ ": " +str(e)
+		pass	
 	return os.path.isdir(dir)
-			
+
+
+def __readFile(filename):
+	content = ''
+	try:
+		with portalocker.Lock(filename, mode="r", flags=1) as myfile:
+			content = myfile.read()
+	except (IOError, portalocker.exceptions.BaseLockException)  as e:
+		print e
+		pass
+	return content
+# Utility function that writes to a file. Makes the parent directory if it does not exist.
+# Returns true if all went well. Returns false if could not access parent directortyor if there was an IOError. Print error to console.	
+# Does not check or use the getLockFile() method, since __writeFile may be used for any file, including the .json files. getLockFile()
+# should be used by the code which calls __writeFile
 def __writeFile(filename, content):
-	
-	##TODO: use atomic writes instead of locks...
-	lock = getFileLock(filename)
-	if lock:
-		with lock:
-			if not __checkMakeDir(os.path.dirname(filename)):
-				#print "_mt.__writefile(" +filename + ") b/c could not load parent dir"
-			
-				return False
-			try:
-				with open(filename, "w") as f:
-					f.write(content)
-					f.close()
-			except IOError as e:
-				print "MyTagsUtils.__writeFile("+filename+" IOError: "
-				print e
-				return False
-		return True
-	else:
-		return False
+	if __checkMakeDir(os.path.dirname(filename)):
+		try:
+			with portalocker.Lock(filename, "w") as f:
+				f.write(content)
+		except (IOError, portalocker.exceptions.BaseLockException) as e:
+			print e
+			return False
+	return True
 
 def __generateJSON(tags):
 	content = '{"tags":['
@@ -115,7 +122,7 @@ def isValidTag(tag):
 			return 0
 	return 1
 
-def getTagsFromData(data, raw=True):
+def __getTagsFromData(data, raw=True):
 	if (raw):
 		data=data.replace('\n', '').decode("utf-8-sig")
 	
@@ -129,19 +136,16 @@ def getTagsFromData(data, raw=True):
 	return tags
 	
 def getTags(filename):
-	
 	tags = []
 	metafile = getMetaFileName(filename)
 	
-	#print("getTags(" + filename + "), for " + metafile+ ":\n") 
-	if (os.path.isfile(metafile)):
-		with open(metafile, 'r') as myfile:
-			tags= getTagsFromData(myfile.read())		
-			#print("Tags: " + " ".join(tags))
-	else:
-		pass#print "\n\n\nGettags(" +filename +") could not load metafile."
-	#print "\ngetTags("+filename+"): \n" + "|".join(tags) + "<end tags>\n"
+	lockFile = getLockFile(filename)
+	if (lockFile):
+		lockFile.timeout = 5
 	
+		with lockFile: #lock for exclusive use of file:
+			tags = __getTagsFromData(__readFile(metafile))
+
 	return tags
 	
 ##
@@ -161,24 +165,38 @@ def getTags(filename):
 #				if success == true, failedFiles is empty.
 ##
 def addTags(filename, tags):	
+	#TODO: check for avoid blocking scenario instead of "with lock" statement?
 	metafile = getMetaFileName(filename)
 	
 	for t in tags:
 		if not isValidTag(t):
 			return (False, t)
-	
 
-	# Should we check to see if file exists before doing anything else? If so, uncomment the next two lines:
-	# If not os.path.isfile(f):
-	#	failedFiles.append(f)
-			
-	combinedTags = set(getTags(filename)) | set(tags)
-	#combinedTags.add("asdfaf#kadf")
-	content = __generateJSON(combinedTags)
-		
-	if not write(metafile, content):
+	lockFile = getLockFile(filename)
+	
+	if lockFile: #found file, ready to try and lock:
+		with lockFile: #got lock
+			try:
+				mode = "r+"
+				if not os.path.exists(metafile):
+					mode = "a+"
+				with portalocker.Lock(metafile, mode) as mFile:
+					mFile.seek(0)
+					combinedTags = set(__getTagsFromData(mFile.read())) | set(tags)
+					content = __generateJSON(combinedTags)
+					mFile.seek(0)
+					mFile.truncate()
+					mFile.write(content)
+					mFile.seek(0)
+				#	print "addTAgs wrote content to " + metafile + ", new content is: " + mFile.read()
+			except portalocker.LockException as e:
+				print e
+				return (False, None)
+	else: # main file didn't exist
+		#print "addTags did nothing, cause file didn't exist"
 		return (False, None)
 	
+	#print "Successfully completed addTags()"
 	return (True, None)
 			#jq -R '{"title":.,"type":"sidecar"}'  | jq -s -c 'unique|{"tags":.,"appName":"jq-jtags"}'
 
@@ -195,7 +213,12 @@ def addTagsBulk(filenames, tags):
 def removeAllTags(filename):
 	## Create bare json file with  empty dictionary "appName":"MyTags"
 	# consider another option: just delete the metafile!
-	return write(getMetaFileName(filename), __generateJSON([]))
+	result = False
+	lockFile = getLockFile(filename);
+	
+	with lockFile:
+		result = __writeFile(getMetaFileName(filename), __generateJSON([]))
+	return result
 	
 def removeSomeTags(filename, removeTags):
 	# Attempts to remove the given tags from the metafile of the given file. 
@@ -208,73 +231,59 @@ def removeSomeTags(filename, removeTags):
 	#
 	
 	#print "Removesometags("+filename+", ["+",".join(removeTags)+"])"
-	if not os.path.exists(filename):
-		print "WHOA! removeSomeTags(" + filename + ") could not find the file!"
-		return False
-		
 	tags = set()
 	metafile = getMetaFileName(filename)
-	#print "removeSomeTags("+filename+")...\n"
-	try:
-		if (os.path.isfile(metafile)):
-			with open(metafile, 'r+') as myfile:
-				data=myfile.read().replace('\n', '').decode("utf-8-sig")
-				#print "\nData :\n" + data +"\n<\enddata>"
-				try:
-					json.loads(data)
-					tags = set(pyjq.all(data +  '| .tags[] | .title'))
-				except ValueError as e:
-					#print "\n\n\n\nremoveSomeTags("+filename+") " + " with data: " + data 
-					#print "     threw pyjq error: "
-					#print e
-					tags = set()
-				
-				
-				for t in removeTags:
-					#print "removing " + t + " from set ([" + ",".join(tags) +"])"
-					tags.discard(t)
-					#print "now have: ([" + ",".join(tags) +"])"
-				
-				output = __generateJSON(tags)	
-				
-				myfile.seek(0)
-				myfile.truncate()
-				myfile.write(output)
-				#print "Wrote to :" + metafile  + " : " + __generateJSON(tags)
-				myfile.close()	
-			myfile.closed	
-	except IOError as e:
-		print "WHOA! removeSomeTags(" + filename + ") threw exception:"
-		print e
-		return False
-	#print os.path.isfile(filename)
-	#print "End of RemovesomeTags(" +filename+")...closed. Here's getTags():" + "|".join(getTags(filename))
+	lock = getLockFile(filename)
+	if (lock):
+		with lock:
+			if not os.path.exists(filename):
+				print "WHOA! removeSomeTags(" + filename + ") could not find the file!"
+				return False
+
+			#print "removeSomeTags("+filename+")...\n"
+			try:
+				if (os.path.isfile(metafile)):
+					with portalocker.Lock(metafile, 'r+') as myfile:
+						#print "\nData :\n" + data +"\n<\enddata>"
+						tags = set(__getTagsFromData(myfile.read()))
+																		
+						for t in removeTags:
+							#print "removing " + t + " from set ([" + ",".join(tags) +"])"
+							tags.discard(t)
+							#print "now have: ([" + ",".join(tags) +"])"
+						output = __generateJSON(tags)	
+						
+						myfile.seek(0)
+						myfile.truncate()
+						myfile.write(output)
+						#print "Wrote to :" + metafile  + " : " + __generateJSON(tags)
+			except IOError as e:
+				print "WHOA! removeSomeTags(" + filename + ") threw exception:"
+				print e
+				return False
+			#print os.path.isfile(filename)
+			#print "End of RemovesomeTags(" +filename+")...closed. Here's getTags():" + "|".join(getTags(filename))
 	return True
-	
-	
-	
 
 	
 ''' updateTags: removes all tags from, and then add the input tags
-	return (success, tag): success == true if all went well; false otherwise, and "tag" is set to first invalid tag if that was the reason for failure
+	return (success, tag): success == true if all went well; false if there were invalid tag, the first of which is also returned
+	Throws Exception if lock or IO error occured.
 '''
 def replaceTags(filename, tags):
-	metafile = getMetaFileName(filename)
-	
 	for t in tags:
 		if not isValidTag(t):
 			return (False, t)
-		
-	# Should we check to see if file exists before doing anything else? If so, uncomment the next two lines:
-	# If not os.path.isfile(f):
-	#	failedFiles.append(f)
 			
 	content = __generateJSON(tags)
+	success = False
+	lockFile = getLockFile(filename);
+
+	with lockFile:
+		metafile = getMetaFileName(filename)		
+		success = __writeFile(metafile, content)
 		
-	if not write(metafile, content):
-		return (False, None)
-	
-	return (True, None)	
+	return (success, None)	
 
 # Move a file, and its sidecar file, to the destination. 
 # Input:	srcFilePath - the full path and filename of the file to move.
@@ -285,8 +294,73 @@ def replaceTags(filename, tags):
 #		    Its sidecar file would now be in the .ts directory of its new parent directory, renamed to match the new filename.
 # False:	False if it did not but did not throw error. 
 # Errors:   Any Exceptions (e.g., IOError) will be raised/passed to the calling block, and not handled/trapped here.
-def moveFile(srcFilePath, destFilePath, safe=True):
-	return False
+def moveFile(src, dest, safe=True):
+	#print "inside moveFile(" +src +"," +dest
+	src = trimPath(src)
+	dest = trimPath(dest)
+	srcMeta = getMetaFileName(src)
+	destMeta = getMetaFileName(dest)
+	
+	success = True
+	reason = ''
+	
+	if (not os.path.exists(src)):
+		reason = "Source does not exist"
+		success = False
+	elif (not os.path.exists(dest)): # dest does not yet exist; much check parent:
+		#print "\nDest does NOT exist!!! " + dest
+		success = checkDir(os.path.dirname(dest))
+		if (not success):
+			reason = "Could not access parent"
+	elif (os.path.isfile(dest) and (safe or os.path.isdir(src))): #
+		if (os.path.exists(dest)):
+			pass #print "The following dest exists: " +dest
+		reason = "Cannot move src["+src+"] to existing dest file ["+dest+"]: either safe mode is on, or src is dir!"
+		success = False
+	elif (os.path.isdir(dest)): # src moved to be child of dest.
+		if not checkDir(dest):
+			success = False
+			reason = "Cannot access dest/parent dir"
+		else: #move dest to explicit child/sub-folder
+			dest = os.path.join(dest, os.path.basename(src))
+			destMeta = getMetaFileName(dest)
+		#	print "changing dest to child; now it is: " + dest
+			if (os.path.exists(dest)): #dest actually exists!
+				if (os.path.isdir(src)):#dest already is a sub-dir
+					success = False
+					reason = "sub-directory by this name already exists; cannot move src to it"
+				elif safe: #file by this name already exists, but safe mode is on:
+					success = False
+					reason = "trying to move into dest folder, but file by this name alreadt exists"
+	if success:			
+		lock1 = getLockFile(src)
+		with lock1:
+			lock2 = getLockFile(dest)
+			with lock2:
+				try:
+					if os.path.isdir(src):# working with a dir; not using file locks:
+						shutil.move(src, dest)
+						if (os.path.exists(srcMeta) and checkDir(getMetaDir(dest))):
+							os.rename(srcMeta, destMeta)
+					else: #working with files; using file-locks:
+						with portalocker.Lock(dest, "w") as d:
+							with portalocker.Lock(src, "r") as s:
+							#print "Got all the locks we need! Trying to rename..."
+								shutil.move(src, dest)
+								if (os.path.exists(srcMeta) and checkDir(getMetaDir(dest))):
+									os.rename(srcMeta, destMeta)
+								
+				except  OSError as e:
+								print "\nCaught error in movefile() function:\n"
+								#print e
+								reason = "caught error in renaming: "
+								reason += str(e)
+								success = False
+		
+	#print "moving file to "+  dest + " returning " + str(success and os.path.exists(dest)) 
+	#if (reason):
+		#print " because: " +reason
+	return dest if success else ''
 
 # Rename a file, in its parent directory. Will not overwrite existing files, but will raise Exception if src already exists.
 # Input:	srcFilePath - the full path and filename of the file to move.
@@ -295,7 +369,7 @@ def moveFile(srcFilePath, destFilePath, safe=True):
 # False:	False if it did not but did not throw error. 
 # Errors:   Any Exceptions (e.g., IOError) will be raised/passed to the calling block, and not handled/trapped here.
 def renameFile(srcFilePath, newname):
-	return False
+	return moveFile(srcFilePath, os.path.join(os.path.dirname(srcFilePath), newname))
 	
 # Copies a file, and its sidecar file (if it exists), to the destination. 
 # Input:	srcFilePath - the full path and filename of the file to move.
@@ -306,38 +380,54 @@ def renameFile(srcFilePath, newname):
 # False:	False if it did not but did not throw error. 
 # Errors:   Any Exceptions (e.g., IOError) will be raised/passed to the calling block, and not handled/trapped here.
 def copyFile(srcFilePath, destFilePath, safe=True):
+	
 	srcFilePath = trimPath(srcFilePath)
 	destFilePath = trimPath(destFilePath)
 	
-	if (os.path.isdir(destFilePath)):
-		destFilePath = os.path.join(os.path.dirname(destFilePath), os.path.basename(srcFilePath))
-		
-	if not safe or not os.path.exists(destFilePath):
-		
-		shutil.copy(srcFilePath, destFilePath)
-		metafile = getMetaFileName(srcFilePath)
-		if (os.path.exists(metafile)):
-			if (checkDir(getMetaDir(destFilePath))):
-				print "copying  " +metafile+ " to " + getMetaFileName(destFilePath)
-				shutil.copy(metafile, getMetaFileName(destFilePath))
-				return os.path.exists(getMetaFileName(destFilePath))
-			else:
-				print "Could not copy " +metafile + "to" +getMetaFileName(destFilePath)
-				return False
-		else:
-			return os.path.exists(destFilePath)
-	else:
+	if (srcFilePath == destFilePath):
 		return False
+		
+	lock = getLockFile(srcFilePath)
+	with lock:
+		lock2 = getLockFile(destFilePath)
+
+		with lock2:		
+			if (os.path.isdir(destFilePath)):
+				destFilePath = os.path.join(os.path.dirname(destFilePath), os.path.basename(srcFilePath))
+				
+			if not safe or not os.path.exists(destFilePath):
+				
+				shutil.copy(srcFilePath, destFilePath)
+				metafile = getMetaFileName(srcFilePath)
+				if (os.path.exists(metafile)):
+					if (checkDir(getMetaDir(destFilePath))):
+						#print "copying  " +metafile+ " to " + getMetaFileName(destFilePath)
+						shutil.copy(metafile, getMetaFileName(destFilePath))
+						return os.path.exists(getMetaFileName(destFilePath))
+					else:
+						print "Could not copy " +metafile + "to" +getMetaFileName(destFilePath)
+						return False
+				else:
+					return os.path.exists(destFilePath)
+			else:
+				return False
 
 def deleteFile(filename):
-	os.remove(filename);
-	os.remove(getMetaFileName(filename))
+	lockFile = getLockFile(filename)
+	with lockFile:
+		os.remove(filename);
+		os.remove(getMetaFileName(filename))	
 	return not os.path.exists(filename)
 
 # Deletes the given file's sidecar file. Returns True if the given file no longer has a sidecar file.
 # Returns False is sidecar file exists and it could not be removed. 
 def deleteMetaFile(filename):
-	return not os.exists(getMetaFileName(filename))
+	metafile = getMetaFileName(filename)
+	lockFile = getLockFile(filename)
+	with lockFile:
+		if (os.path.exists(metafile)):
+			os.remove(metafile)
+	return not os.path.exists(metafile)
 
 # Returns list of .JSON metafiles (not parent files!) in the .ts folder of given "directory" that have no corresponding file in "directory'
 def findOrphanMetaFiles(directory):
