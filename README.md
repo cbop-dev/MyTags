@@ -8,7 +8,7 @@ This is a work in progress!
 
 UPDATE:
 ------
-Version 0.1.1, is now released. It includes several python library (mytags.MyTagsUtils) functions, some of which are now integrated into Nemo's file-options dropdown via right-click ("Add Tags", "Delete Tags", "Replace Tags", "Erase Tags").
+Version 0.2 is now released. It includes implementations of all of the major python library (mytags.MyTagsUtils) functions, including several basic file operations (copy, rename, move, delete) that take sidecar files into account. The Nemo extension currently only includes basic tagging options ("Add Tags", "Delete Tags", "Replace Tags", "Erase Tags"), but none (yet) of the file operations. 
 
 
 Requirements:
@@ -19,7 +19,8 @@ Requirements:
   * Tkinter: https://wiki.python.org/moin/TkInter
   * TkTreectrl: http://tkintertreectrl.sourceforge.net/
   * pyjq: https://pypi.python.org/pypi/pyjq (jq binding for python)
-  * https://filelock.readthedocs.io
+  * filelock for creating lock-files: https://pypi.python.org/pypi/filelock
+  * portalocker for file-locking: https://pypi.python.org/pypi/portalocker
 
 There may be other requirements that I've overlooked...
 
