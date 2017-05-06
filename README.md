@@ -47,9 +47,9 @@ Installation
 
 Screenshots:
 -----------
-![MyTags Nemo Extension screenshot](file:/home/cbrannan/dev/git-repos/MyTags/images/Tags-submenu.png "MyTags Nemo Extension shot 1")
+![MyTags Nemo Extension screenshot](https://github.com/cbop-dev/MyTags/blob/master/images/Tags-submenu.png "MyTags Nemo Extension shot 1")
 
-![MyTags Nemo Extension screenshot](file:/home/cbrannan/dev/git-repos/MyTags/images/Files-submenu.png "MyTags Nemo Extension shot 2")
+![MyTags Nemo Extension screenshot](https://github.com/cbop-dev/MyTags/blob/master/images/Tags-submenu.png "MyTags Nemo Extension shot 2")
 
 Motivation:
 -----------
