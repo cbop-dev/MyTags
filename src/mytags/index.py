@@ -3,7 +3,8 @@ import argparse
 from subprocess import Popen
 
 #CHANGE THE FOLLOWING LINE TO YOUR RECOLL DIRECTORY
-config='~/.recoll'
+#config='/path/to/.recoll'
+index = False
 
 def updateIndex(filename, config=config):
 	

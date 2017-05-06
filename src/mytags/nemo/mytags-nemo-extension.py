@@ -12,8 +12,8 @@ from gi.repository import GObject, Nemo
 ''' The "mytags" dir, under "src" in the repo, must be in your python path. 
 	Either copy the directory to one already in your $PYTHONPATH env variable (on Linux), or add it below and uncomment the next two lines.
 '''
-mytagsLibDir = "/home/cbrannan/dev/git-repos/MyTags/src"
-sys.path.append(mytagsLibDir)
+#mytagsLibDir = "/path/to/mytags/src"
+#sys.path.append(mytagsLibDir)
 
 import mytags.MyTagsUtils as mt
 import mytags.index as myIndex
