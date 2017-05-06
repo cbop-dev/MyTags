@@ -7,9 +7,10 @@ import json
 import filelock
 import shutil
 import portalocker
+import argparse
 
-#invalid character for tags, (loosely) borrowed from TagSpaces requirements, but allowing for spaces and underscores:
-invalidTagChars = "\"',:/\\|<>	"
+#invalid character for tags, (loosely) borrowed from TagSpaces requirements, but allowing for underscores:
+invalidTagChars = " \"',:/\\|<>	"
 
 def trimPath(filename):
 	return filename.rstrip('/\\')
@@ -76,11 +77,16 @@ def __checkMakeDir(dir):
 	return os.path.isdir(dir)
 
 
-def __readFile(filename):
+def __readFile(filename, uselock=True):
 	content = ''
 	try:
-		with portalocker.Lock(filename, mode="r", flags=1) as myfile:
-			content = myfile.read()
+		if (uselock):
+			with portalocker.Lock(filename, mode="r", flags=1) as myfile:
+				content = myfile.read()
+		else:
+			with open(filename) as myfile:
+				content = myfile.read()
+				
 	except (IOError, portalocker.exceptions.BaseLockException)  as e:
 		print e
 		pass
@@ -122,6 +128,18 @@ def isValidTag(tag):
 			return 0
 	return 1
 
+#returns a tuple of two lists: (validtags, invalidtags)
+def checkTags(tags):
+	validTags = []
+	invalidTags = []
+	for t in tags:
+		if (isValidTag(t)):
+			validTags.insert(0,t)
+		else:
+			invalidTags.insert(0,t)
+	return (validTags, invalidTags)
+
+	
 def __getTagsFromData(data, raw=True):
 	if (raw):
 		data=data.replace('\n', '').decode("utf-8-sig")
@@ -135,19 +153,23 @@ def __getTagsFromData(data, raw=True):
 		#print e
 	return tags
 	
-def getTags(filename):
+def getTags(filename, uselock=True):
+	
 	tags = []
 	metafile = getMetaFileName(filename)
 	
-	lockFile = getLockFile(filename)
-	if (lockFile):
-		lockFile.timeout = 5
-	
-		with lockFile: #lock for exclusive use of file:
-			tags = __getTagsFromData(__readFile(metafile))
+	if (uselock):
+		lockFile = getLockFile(filename)
+		if (lockFile and os.path.isfile(metafile)):
+			lockFile.timeout = 5
+		
+			with lockFile: #lock for exclusive use of file:
+				tags = __getTagsFromData(__readFile(metafile))
+	else:
+		tags = __getTagsFromData(__readFile(metafile, uselock))
 
 	return tags
-	
+
 ##
 # addTags: adds tags to files
 #		@input:
@@ -285,26 +307,23 @@ def replaceTags(filename, tags):
 		
 	return (success, None)	
 
-# Move a file, and its sidecar file, to the destination. 
-# Input:	srcFilePath - the full path and filename of the file to move.
-#			destFilePath - the full path and filename of the new location for the file
-#			safe - If true (default), will not overwrite the destFilePath if its exist; 
-#				   in such a case does nothing and returns False.
-# Return:	True if file moved successfuly. This means the srcFilePath no longer exists, but the same file is now at destFilePath. 
-#		    Its sidecar file would now be in the .ts directory of its new parent directory, renamed to match the new filename.
-# False:	False if it did not but did not throw error. 
-# Errors:   Any Exceptions (e.g., IOError) will be raised/passed to the calling block, and not handled/trapped here.
-def moveFile(src, dest, safe=True):
-	#print "inside moveFile(" +src +"," +dest
-	src = trimPath(src)
-	dest = trimPath(dest)
-	srcMeta = getMetaFileName(src)
-	destMeta = getMetaFileName(dest)
-	
+''' Checks src, dest, based on whether they exist, and whether they are files or dirs. 
+	Returns  a tuple (success, dest, reason): success is True if src and dest 
+	are a valid pair for copying/moving with the given safe mode (safe=True means no files
+	can be overwritten.  Dest is the fullPath of the (potentially updated) destination.
+	It is an empty string ('') if the files cannot be copied/moved, and, 
+	if this is the case, 'reason' contains a message about why this is which can be 
+	used for loggin.
+'''
+def __checkSrcDest(src,dest, safe=True):
 	success = True
 	reason = ''
-	
-	if (not os.path.exists(src)):
+	src = trimPath(src)
+	dest = trimPath(dest)
+	if (src == dest):
+		success = False
+		reason = "Src and Dest are the same!"
+	elif (not os.path.exists(src)):
 		reason = "Source does not exist"
 		success = False
 	elif (not os.path.exists(dest)): # dest does not yet exist; much check parent:
@@ -323,7 +342,6 @@ def moveFile(src, dest, safe=True):
 			reason = "Cannot access dest/parent dir"
 		else: #move dest to explicit child/sub-folder
 			dest = os.path.join(dest, os.path.basename(src))
-			destMeta = getMetaFileName(dest)
 		#	print "changing dest to child; now it is: " + dest
 			if (os.path.exists(dest)): #dest actually exists!
 				if (os.path.isdir(src)):#dest already is a sub-dir
@@ -332,6 +350,27 @@ def moveFile(src, dest, safe=True):
 				elif safe: #file by this name already exists, but safe mode is on:
 					success = False
 					reason = "trying to move into dest folder, but file by this name alreadt exists"
+	return (success, dest, reason)
+
+# Move a file, and its sidecar file, to the destination. 
+# Input:	srcFilePath - the full path and filename of the file to move.
+#			destFilePath - the full path and filename of the new location for the file
+#			safe - If true (default), will not overwrite the destFilePath if its exist; 
+#				   in such a case does nothing and returns False.
+# Return:	True if file moved successfuly. This means the srcFilePath no longer exists, but the same file is now at destFilePath. 
+#		    Its sidecar file would now be in the .ts directory of its new parent directory, renamed to match the new filename.
+# 			False if it did not but did not throw error. OSError Exception will be caught and not re-raised. Other exceptions are not caught.
+# Errors:   Any Exceptions besides an OSError will be raised/passed to the calling block, and not handled/trapped here.
+def moveFile(src, dest, safe=True):
+	#print "inside moveFile(" +src +"," +dest
+	src = trimPath(src)
+	dest = trimPath(dest)
+	
+	(success, dest, reason) = __checkSrcDest(src, dest, safe)
+	
+	srcMeta = getMetaFileName(src)
+	destMeta = getMetaFileName(dest)
+			
 	if success:			
 		lock1 = getLockFile(src)
 		with lock1:
@@ -341,21 +380,21 @@ def moveFile(src, dest, safe=True):
 					if os.path.isdir(src):# working with a dir; not using file locks:
 						shutil.move(src, dest)
 						if (os.path.exists(srcMeta) and checkDir(getMetaDir(dest))):
-							os.rename(srcMeta, destMeta)
+							shutil.move(srcMeta, destMeta)
 					else: #working with files; using file-locks:
 						with portalocker.Lock(dest, "w") as d:
 							with portalocker.Lock(src, "r") as s:
 							#print "Got all the locks we need! Trying to rename..."
 								shutil.move(src, dest)
 								if (os.path.exists(srcMeta) and checkDir(getMetaDir(dest))):
-									os.rename(srcMeta, destMeta)
+									shutil.move(srcMeta, destMeta)
 								
-				except  OSError as e:
-								print "\nCaught error in movefile() function:\n"
-								#print e
-								reason = "caught error in renaming: "
-								reason += str(e)
-								success = False
+				except  (OSError, shutil.Error) as e:
+					print "\nCaught error in movefile() function:\n"
+					#print e
+					reason = "caught error in renaming: "
+					reason += str(e)
+					success = False
 		
 	#print "moving file to "+  dest + " returning " + str(success and os.path.exists(dest)) 
 	#if (reason):
@@ -379,38 +418,45 @@ def renameFile(srcFilePath, newname):
 # Return:	True if file copied successfuly
 # False:	False if it did not but did not throw error. 
 # Errors:   Any Exceptions (e.g., IOError) will be raised/passed to the calling block, and not handled/trapped here.
-def copyFile(srcFilePath, destFilePath, safe=True):
+def copyFile(src, dest, safe=True):
 	
-	srcFilePath = trimPath(srcFilePath)
-	destFilePath = trimPath(destFilePath)
+	src = trimPath(src)
+	dest = trimPath(dest)
 	
-	if (srcFilePath == destFilePath):
-		return False
-		
-	lock = getLockFile(srcFilePath)
-	with lock:
-		lock2 = getLockFile(destFilePath)
+	(success, dest, reason) = __checkSrcDest(src, dest, safe)
 
-		with lock2:		
-			if (os.path.isdir(destFilePath)):
-				destFilePath = os.path.join(os.path.dirname(destFilePath), os.path.basename(srcFilePath))
-				
-			if not safe or not os.path.exists(destFilePath):
-				
-				shutil.copy(srcFilePath, destFilePath)
-				metafile = getMetaFileName(srcFilePath)
-				if (os.path.exists(metafile)):
-					if (checkDir(getMetaDir(destFilePath))):
-						#print "copying  " +metafile+ " to " + getMetaFileName(destFilePath)
-						shutil.copy(metafile, getMetaFileName(destFilePath))
-						return os.path.exists(getMetaFileName(destFilePath))
-					else:
-						print "Could not copy " +metafile + "to" +getMetaFileName(destFilePath)
-						return False
-				else:
-					return os.path.exists(destFilePath)
-			else:
-				return False
+	srcMeta = getMetaFileName(src)
+	destMeta = getMetaFileName(dest)
+	
+	if success:			
+		lock1 = getLockFile(src)
+		with lock1:
+			lock2 = getLockFile(dest)
+			with lock2:
+				try:
+					if os.path.isdir(src):# working with a dir, using shutil.copytree() instead of copy()
+						shutil.copytree(src, dest)
+						if (os.path.exists(srcMeta) and checkDir(getMetaDir(dest))):
+							shutil.copy2(srcMeta, destMeta)
+					else: #working with files; using file-locks:
+						with portalocker.Lock(dest, "w") as d:
+							with portalocker.Lock(src, "r") as s:
+							#print "Got all the locks we need! Trying to rename..."
+								shutil.copy2(src, dest)
+								if (os.path.exists(srcMeta) and checkDir(getMetaDir(dest))):
+									shutil.copy2(srcMeta, destMeta)
+								
+				except  OSError as e:
+					print "\nCaught error in copyfile() function:\n"
+					#print e
+					reason = "caught error in renaming: "
+					reason += str(e)
+					success = False
+		
+	#print "Copying file to "+  dest + " returning " + str(success and os.path.exists(dest)) 
+	#if (reason):
+		#print " because: " +reason
+	return dest if success else ''
 
 def deleteFile(filename):
 	lockFile = getLockFile(filename)
@@ -432,5 +478,24 @@ def deleteMetaFile(filename):
 # Returns list of .JSON metafiles (not parent files!) in the .ts folder of given "directory" that have no corresponding file in "directory'
 def findOrphanMetaFiles(directory):
 	return []
+
+def cl_getTags(args):
+	print "\n".join(getTags(args.filename, False))
 	
+def commandLine():
+	#print sys.argv
+	import argparse
+
+	parser = argparse.ArgumentParser(description='Manage file/folder tags in sidecar files (.ts)')
+	#parser.add_argument('command', metavar='[command]', type=int, nargs='+', help='an integer for the accumulator')
+	subparsers = parser.add_subparsers(help='[command] help')
+	parser_get = subparsers.add_parser('get', help='get help')
+	parser_get.add_argument('filename', metavar='Filename', type=str, help='Filename')
+	parser_get.set_defaults(func=cl_getTags)
+	#parser_get.add_argument('tag', metavar='tag', type=str, nargs = '+', help='tag')
+	args = parser.parse_args()
+	args.func(args)
 	
+
+if __name__ == "__main__":
+	commandLine()

@@ -89,8 +89,8 @@ class myTagTests(object):
 
 class validTagTest(unittest.TestCase):
 	def setUp(self):
-		self.validTags = ["freddy2349","Jack-and-Jill","Wretched.Man-eats-rotten_fruit=for*breakfast","@home","+1","!run away!"]
-		self.invalidTags = [" fred", "fred ", "jack and	jill","adf<adf","asdf:we", "Jack\\", "/home", "d|b"]
+		self.validTags = ["freddy2349","Jack-and-Jill","Wretched.Man-eats-rotten_fruit=for*breakfast","@home","+1","!runaway!"]
+		self.invalidTags = [" fred", "fred ", "jack and	jill","adf<adf","asdf:we", "Jack\\", "/home", "d|b", "no spaces"]
 	
 	def testValidTags(self):
 		for t in self.validTags:
@@ -166,7 +166,7 @@ class addTagsTest(TestWithFiles):
 		self.assertTrue(success)
 	
 	def test2_ComplexValidTagNames(self):
-		tags = ["tag1-asdf_asdflj asdf","ta()g2", "tAg@3", "!@ta=g7","asoijfija;sdj asdlfk a;sdlfkj as;dlfk a;dfjal jfaioj;lj jioj fij ijadghigyu @!--___"]
+		tags = ["tag1-asdf_asdflasdf","ta()g2", "tAg@3", "!@ta=g7","asoijfija;sdjasdlfka;sdlfkjas;dlfka;dfjajfaioj;ljjiojfijijadghigyu@!--___"]
 		oFile = testdatadir + "/testfile 2"
 		cFile = oFile + "-copy"
 		(success1,failures1) = mt.addTags(oFile, tags)
@@ -181,7 +181,7 @@ class addTagsTest(TestWithFiles):
 		self.assertTrue(set(tags) | set(self.testFilesTags[oFile][0]) == set(mt.getTags(cFile)), mt.getTags(cFile))
 		
 	def test4_BulkAdd(self):
-		tags = ["tag 1", "another tag", "waiting", "long_qw@$!@$", "fun times!", "rancid"]
+		tags = ["tag_1", "another-tag", "waiting", "long_qw@$!@$", "fun-times!", "rancid"]
 		
 		(success, failures) = mt.addTagsBulk(self.testFilesTags.keys(), tags)
 		self.assertTrue(success, failures)
@@ -248,7 +248,7 @@ class DeleteTagsTest(TestWithFiles):
 			self.assertFalse(mt.getTags(filename), filename + "|".join(mt.getTags(filename)))
 		
 	def test8_removeSomeTags(self):	
-		removeTags = set(["low", "longe-tag-with-several-hyphens", "non-existing tag", " BAD tag"])
+		removeTags = set(["low", "longe-tag-with-several-hyphens", "non-existingtag", " BAD tag"])
 		for filename, values in self.testFilesTags.items():			
 			oTags = set(mt.getTags(filename))
 			
@@ -274,7 +274,7 @@ class DeleteTagsTest(TestWithFiles):
 class ReplaceTagsTest(TestWithFiles):
 	
 	def test1_replaceTags(self):
-		tags = ["faith", "Hope", "charity!", "something else", "@nevermore"]
+		tags = ["faith", "Hope", "charity!", "somethingelse", "@nevermore"]
 		
 		for filename, values in self.testFilesTags.items():
 			self.assertTrue(mt.replaceTags(filename, tags), filename)
@@ -361,20 +361,48 @@ class FileOperationsTest(TestWithFiles):
 			with lock:
 				self.assertTrue(lock.is_locked)
 			self.assertFalse(lock.is_locked)
+	
 	def test5_CopyfileTest(self):
 		tDir = os.path.join(testdatadir, "tmpss")
+		tDir2 = os.path.join(testdatadir, "tmpsss")
 		if mt.checkDir(tDir):
 			for f, values in self.testFilesTags.items():
 				mt.addTags(f, values[0])
 				self.assertTrue(set(mt.getTags(f)) == set(values[0]))
 				#print "copying " + f + " to "+ tDir# +os.path.join(tDir, os.path.basename(f))
-				mt.copyFile(f, tDir)
-				mt.copyFile(f, os.path.join(tDir, os.path.basename(f)))
-				self.assertTrue(os.path.exists(os.path.join(tDir, os.path.basename(f))), tDir +":" +f)
-				s = set(mt.getTags(os.path.join(tDir, os.path.basename(f))))
-				s2 = set(values[0])
-				self.assertTrue( s ==  s2, str(s) + "\n" +str(s2))
+				result = mt.copyFile(f, tDir)
+				self.assertTrue(result)
 				
+				result2 = mt.copyFile(f, os.path.join(tDir2, os.path.basename(f)))
+				self.assertTrue(result2)
+				self.assertTrue(os.path.exists(os.path.join(tDir, os.path.basename(f))), tDir +":" +f)
+				self.assertTrue(os.path.exists(os.path.join(tDir2, os.path.basename(f))), tDir +":" +f)
+				s = set(mt.getTags(os.path.join(tDir, os.path.basename(f))))
+				s2 = set(mt.getTags(os.path.join(tDir2, os.path.basename(f))))
+				s3 = set(values[0])
+				self.assertTrue( s ==  s3, str(s) + "\n" +str(s3))
+				self.assertTrue( s2 ==  s3, str(s2) + "\n" +str(s3))
+		shutil.rmtree(tDir2)
+		self.assertFalse(os.path.exists(tDir2))
+		
+		self.assertTrue(mt.copyFile(tDir, tDir2))
+		self.assertTrue(os.path.isdir(tDir2))
+		for f, v in self.testFilesTags.items():
+			newloc = os.path.join(tDir2, os.path.basename(f))
+			self.assertTrue(os.path.exists(newloc), newloc)
+			self.assertTrue(set(mt.getTags(newloc)) == set(v[0]), newloc)
+		
+		shutil.rmtree(tDir2)
+		self.assertFalse(os.path.exists(tDir2))
+		self.assertTrue(mt.checkDir(tDir2))
+		
+		self.assertTrue(mt.copyFile(tDir, tDir2))
+		self.assertTrue(os.path.isdir(tDir2))
+		for f, v in self.testFilesTags.items():
+			newloc = os.path.join(tDir2, os.path.join(os.path.basename(tDir), os.path.basename(f)))
+			self.assertTrue(os.path.exists(newloc), newloc)
+			self.assertTrue(set(mt.getTags(newloc)) == set(v[0]), newloc)
+		
 		
 	def test6_moveFile(self):
 		destDir = os.path.join(testdatadir, "moveFiles")

@@ -2,13 +2,17 @@ MyTags
 ========
 This is a set of tools, mostly in python, (eventually) providing basic functionality for a tagging files in a cross-platform way that is compatible with TagSpaces "sidecar" metafiles (http://tagspaces.org). A file's (or folder's) tags are stored in a JSON "sidecar" metafile in the .ts directory of the file's (or folder's) parent directory; each file's metafile has the same name as its originating file with an appended ".json" extension. This is being developed on Linux (Mint 18), but with the hopes that it could be usable across platforms.
 
-This project is initially functional with the Nemo file manager (tested on version 3.2.2), using the nemo-python package to extend it (mytags-nemo-extension.py goes into ~/.local/share/nemo-python/extensions, and the src directory must be in your PYTHONPATH environment variable).  Eventually a module will offer index/search integration with the Recoll engine (https://www.lesbonscomptes.com/recoll/). 
+This project is initially functional with the Nemo file manager (tested on version 3.2.2), using the nemo-python package to extend it (mytags-nemo-extension.py goes into ~/.local/share/nemo-python/extensions, and the src directory must be in your PYTHONPATH environment variable).  Some basic integration with the Recoll engine is now implemented. (See installation instructions below.)
 
 This is a work in progress! 
 
 UPDATE:
 ------
-Version 0.2 is now released. It includes implementations of all of the major python library (mytags.MyTagsUtils) functions, including several basic file operations (copy, rename, move, delete) that take sidecar files into account. The Nemo extension currently only includes basic tagging options ("Add Tags", "Delete Tags", "Replace Tags", "Erase Tags"), but none (yet) of the file operations. 
+Version 0.3 is now released. It includes:
+* Nemo extension functions for tags (add/remove-some/remove-all/replace) and files (copy, move, rename).  The interface is fairly basic, without giving additional options.  
+* The python library (mytags.MyTagsUtils) is what does the file-tagging work and includes the file operations (copy, rename, move, delete) that take sidecar files into account. 
+* Simple command-line bash script (using jq) for reading tags from files (src/mytags/bash/ts-tags)
+* Recoll file-indexing integration. (See installation instructions below.)
 
 
 Requirements:
@@ -21,21 +25,31 @@ Requirements:
   * pyjq: https://pypi.python.org/pypi/pyjq (jq binding for python)
   * filelock for creating lock-files: https://pypi.python.org/pypi/filelock
   * portalocker for file-locking: https://pypi.python.org/pypi/portalocker
+* For indexing: Recoll 1.23 (https://www.lesbonscomptes.com/recoll)
 
 There may be other requirements that I've overlooked...
 
-Installation (incomplete)
+Installation
 -------------------------
-1. Download/Git the repository. 
+1. Make sure you've installed all the requirements above!  
+2. Download/Git the repository. 
 2. Copy the "src/mytags/nemo/mytags-nemo-extension" to "~/.local/share/nemo-python/extensions" (or create this directory if it does not exist). 
-3. Copy the "mytags" folder (found in the "src" directory) to a path where python libraries are stored, or add the "src" folder it to your PYTHONPATH environment variable before running Nemo (e.g, in Bash: "env PYTHONPATH=$PYTHONPATH:/home/user/git/MyTags/src" nemo).
-4. Close all instances of Nemo ("nemo -q"), then run nemo with the correct environment settings (e.g, 'env PYTHONPATH="$PYTHONPATH:/home/user/git/MyTags/src', as mentioned in step 3). 
-  * For development or debugging, try running Nemo with "gdb" tool: "env PYTHONPATH=$PYTHONPATH:/home/user/git/MyTags/src" gdb nemo 
-5. Select one or more files, then right-click, and try the "MyTags" submenu items. None of these will change your files themselves; these functions only mess with metafiles in ".ts" folders in the same directory.
+3. Copy the "mytags" folder (found in the "src" directory) to a path where python libraries are stored, or add the "src" folder it to your PYTHONPATH environment variable before running Nemo (e.g, in Bash: "env PYTHONPATH=$PYTHONPATH:/home/user/git/MyTags/src" nemo). OR, edit the top of mytags-nemo-extension.py and set the python path as mentioned in the comments.
+4. For Recoll integration (optional):
+   a. You must have Recoll installed and setup, and a index already configured. (See https://www.lesbonscomptes.com/recoll)
+   b. Edit src/mytags/index.py and point it to your Recoll config diretory, eg., "/home/user/.recoll", and set the index variable to True at the cop of the same file.) 
+   c. Copy the src/mytags/bash/ts-tags script to somewhere on your system path (e.g., /usr/local/bin) so it will be read by the recollindex engine.
+  Make sure to either set the PYTHONPATH variable points to the mytags/src directory for your Nemo session, or set the path manually at the top of mytags-nemo-extension.py (this file goes in your nemo-python/extensions folder, e.g., "/home/user/.local/share/nemo-python/extensions")
+   d. Configure your recoll index (e.g., edit ~/.recoll/recoll.cfg) to not index  /.ts/ folders and avoid .ts files. (See example in src/mytags/recoll/), and a line with the metacmds entry such as this: "metadatacmds = ; tags = ts-tags %f;" (This tells recoll to call the "ts-tags" tools, passing the filename, whenever it indexes a file, and store the results in the "tags" field of the database.)
+5. Close all instances of Nemo ("nemo -q"), then run nemo with the correct environment settings (e.g, 'env PYTHONPATH="$PYTHONPATH:/home/user/git/MyTags/src", unless your manually setting the path as in step 3). 
+   * For development or debugging, try running Nemo with "gdb" tool: "env PYTHONPATH="$PYTHONPATH:/home/user/git/MyTags/src" gdb nemo 
+5. Select one or more files, then right-click, and try the "MyTags" submenus and commands. NB: None of "Tags" commands will change your files themselves; these functions only mess with metafiles in ".ts" folders in the same directory. BUT, the "Files" commands will copy/move/rename your selected files (except rename, which takes 1 file), after prompting your for a directory/name, and make the appropriate changes to the metafiles (and re-index the new files if indexing is turned on in index.py and recoll is configured correctly).
 
-Screenshot:
+Screenshots:
 -----------
-![MyTags Nemo Extension screenshot](https://github.com/cbop-dev/MyTags/blob/master/images/screenshot2.png "MyTags Nemo Extension shot 1")
+![MyTags Nemo Extension screenshot](file:/home/cbrannan/dev/git-repos/MyTags/images/Tags-submenu.png "MyTags Nemo Extension shot 1")
+
+![MyTags Nemo Extension screenshot](file:/home/cbrannan/dev/git-repos/MyTags/images/Files-submenu.png "MyTags Nemo Extension shot 2")
 
 Motivation:
 -----------
@@ -47,12 +61,14 @@ And various solutions to tagging files have been developed. TagSpaces provides a
 
 TO-DO:
 ------
-* Basic file management operations that incorporate tags (copy, move, rename, delete).
-* More robust Nemo integration functionality
-* Recoll indexing integration
-* Test on other Linux platforms
+* Add "delete files" command to Nemo menu
+* Indexing: handle deleted files better?
+* Further testing:
+  * Nemo extension
+  * Recoll indexing integration
+* Test on other Linux platforms?
 * Integrate with Windows?? (low priority)
-* README: installation instructions
+* README: better installation instructions?
 
 
 

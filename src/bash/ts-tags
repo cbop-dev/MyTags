@@ -1,0 +1,15 @@
+#!/bin/bash
+
+##############################################################################
+# jq-tags - Lists tags for a file as found in 
+#           its metadata JSON file (./.ts/$1.json).
+#         - Params: filename
+#         - stdout: tags, one per line
+##############################################################################
+
+metafile=`dirname "$1"`/.ts/`basename "$1"`.json
+
+
+if [[ -e "$metafile" ]]; then
+	jq -r -M '.tags[] | .title' "$metafile" 2>/dev/null
+fi

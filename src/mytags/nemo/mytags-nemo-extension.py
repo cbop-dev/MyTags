@@ -4,7 +4,7 @@ import gi
 import sys
 from Tkinter import *		   # Importing the Tkinter (tool box) library 
 import tkSimpleDialog
-import tkMessageBox
+import tkMessageBox, tkFileDialog
 
 gi.require_version('Nemo', '3.0')
 from gi.repository import GObject, Nemo
@@ -12,18 +12,35 @@ from gi.repository import GObject, Nemo
 ''' The "mytags" dir, under "src" in the repo, must be in your python path. 
 	Either copy the directory to one already in your $PYTHONPATH env variable (on Linux), or add it below and uncomment the next two lines.
 '''
-#mytagsLibDir = "/path/to/mytags/src"
-#sys.path.append(mytagsLibDir)
+mytagsLibDir = "/home/cbrannan/dev/git-repos/MyTags/src"
+sys.path.append(mytagsLibDir)
 
 import mytags.MyTagsUtils as mt
+import mytags.index as myIndex
+
+
+index = True
+	
+
+
+def updateFiles(files, filesChanged, filesRemoved=[]):
+		for f in files:
+			f.invalidate_extension_info()
+		if (index):
+			myIndex.updateIndexBatch(filesChanged)
+			myIndex.removeBatch(filesRemoved)
+			
+
+def getCleanFilename(filename):
+	return urllib.unquote(filename.rstrip('\//'))
 
 def getCleanFilenames(files):
 	cleanedFilenames = []
 	for thefile in files:
-		cleanedFilenames.insert(0,urllib.unquote(thefile.get_uri()[7:]))
+		cleanedFilenames.insert(0,getCleanFilename(thefile.get_uri()[7:]))
 	return cleanedFilenames
 
-class ColumnExtension(GObject.GObject, Nemo.ColumnProvider, Nemo.InfoProvider):
+class MyTagsColumnExtension(GObject.GObject, Nemo.ColumnProvider, Nemo.InfoProvider):
 	def __init__(self):
 		pass
 	
@@ -40,13 +57,26 @@ class ColumnExtension(GObject.GObject, Nemo.ColumnProvider, Nemo.InfoProvider):
 		filename = urllib.unquote(file.get_uri()[7:])
 		
 		file.add_string_attribute('tags', "|".join(mt.getTags(filename)))
+		return Nemo.OperationResult.COMPLETE
+
 
 
 class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
-	def __init__(self):
-		pass
+
 
 	def simpleDialog(self, title, label):
+		root = Tk()
+		ws = root.winfo_screenwidth() # width of the screen
+		hs = root.winfo_screenheight() # height of the screen
+
+		root.geometry('+%d+%d' % (ws/2, hs/2))
+		root.update()
+		root.withdraw()	
+		textInput = tkSimpleDialog.askstring(title, label, parent=root)
+		root.destroy()
+		return textInput
+	
+	def __getRootWin(self):
 		root = Tk()
 		ws = root.winfo_screenwidth() # width of the screen
 		hs = root.winfo_screenheight() # height of the screen
@@ -61,10 +91,27 @@ class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
 		#root.geometry('+20+10')
 		root.geometry('+%d+%d' % (ws/2, hs/2))
 		root.update()
-		root.withdraw()	
-		textInput = tkSimpleDialog.askstring(title, label, parent=root)
+		return root
+
+	
+	def chooseDir(self, title,initialdir=os.getcwd()):
+		
+		root = self.__getRootWin()
+		root.withdraw()
+		destDir = tkFileDialog.askdirectory(title=title, mustexist=True, initialdir=initialdir, parent=root)
 		root.destroy()
-		return textInput
+		return destDir
+	
+	def showinfo(self, title, message):
+		root = Tk()
+		ws = root.winfo_screenwidth() # width of the screen
+		hs = root.winfo_screenheight() # height of the screen
+		root.geometry('+%d+%d' % (ws/2, hs/2))
+		root.update()
+		root.withdraw()	
+		result = tkMessageBox.showinfo(title, message, parent=root)
+		root.destroy()
+		
 	
 	def simpleConfirm(self, title, message):
 		root = Tk()
@@ -91,10 +138,21 @@ class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
 	
 	def menu_erasetags(self, menu, files):
 		cleanedFilenames = getCleanFilenames(files)
+		failed = []
 		if (self.simpleConfirm("Erase Tags", "Remove ALL tags from selected files?")):
 			for f in cleanedFilenames:
-				mt.removeAllTags(f)
-				
+				if(not mt.removeAllTags(f)):
+					failed.insert(0,f)
+		successful = []
+		
+		if (failed):
+			self.warning("Erase tags", "Could not erase tags for the following files: " + "\n".join(failed))
+			successful = list(set(cleanedFilenames) - set(failed))
+		else:
+			successful = cleanedFilenames
+		
+		if (successful):
+			updateFiles(files, successful)
 	
 	def menu_replacetags(self, menu, files):
 		cleanedFilenames = getCleanFilenames(files)
@@ -103,28 +161,60 @@ class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
 		tags = ''
 		if (tagString):
 			tags = [t.strip() for t in tagString.split(",")]
-		#tkMessageBox.showinfo("Delete Tags", "Deleting tags: " + "|".join(tags), parent=root)
-		
-		if (tags):
-			failed = []
-			for f in cleanedFilenames:
-				if not mt.replaceTags(f, tags):
-					failed.insert(0, f)
-			
-			if failed:
-				self.showwarning("Error", "Attempting to rplace tags from the following files failed: \n" + "\n".join(failed))
+			badTags = mt.checkTags(tags)[1]
+					
+			if (tags):
+				if (badTags):
+					self.warning("Replace Tags Failed", "Invalid tags: " + "\n".join(badTags))
+				else:
+					failed = []
+					succeeded = []
+					for f in cleanedFilenames:
+						if not mt.replaceTags(f, tags):
+							failed.insert(0, f)
+					
+					if failed:
+						tkMessageBox.showwarning("Error", "Attempting to rplace tags from the following files failed: \n" + "\n".join(failed))
+						succeeded = list(set(cleanedFilenames) - set(failed))
+					else:
+						succeeded = cleanedFilenames
+					
+					updateFiles(files, succeeded)
 		
 	def menu_addtags(self, menu, files):
 		cleanedFilenames = getCleanFilenames(files)
 		
 		tagString = self.simpleDialog("Add Tags", "Enter tags to add (separated by commas):")
-			
+				
+		result = (False, [])
+		
 		#tags = tagString.split(",")
 		tags = [t.strip() for t in tagString.split(",")]
+		badTags = mt.checkTags(tags)[1]
+		
 		if (tags):
-			print "attempting to add [" + "|".join(tags) + "] to " + ";".join(cleanedFilenames)
-			mt.addTagsBulk(cleanedFilenames, tags)
-
+			if (badTags):
+				self.warning("Add Tags Failed", "Invalid tags: " + "\n".join(badTags))
+			else:
+				print "attempting to add [" + "|".join(tags) + "] to " + ";".join(cleanedFilenames)
+				result = mt.addTagsBulk(cleanedFilenames, tags)
+			
+			
+				if (not result[0]):
+					#failed:
+					if (len(result[1]) != len(cleanedFilenames)): #some were updated
+						modFiles = set(cleanedFiles) - set(result[1])
+						updateFiles(files, modFiles)		
+						self.warning("Add Tags Result", "The following files were not modified: " + "\n".join(result[1]))	
+					else: #no files were updated due to bad tags
+						self.warning("Add Tags Failed", "None of the files could be modified. Did you add a bad tag?")	
+				else:
+					updateFiles(files, cleanedFilenames)
+				
+				self.emit_items_updated_signal()
+				self.emit("items_updated")
+#		Nemo.emit("items_updated")
+		
 	def menu_deletetags(self, menu, files):
 		cleanedFilenames = getCleanFilenames(files)
 			
@@ -132,6 +222,8 @@ class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
 		tags = []
 		if (tagString):
 			tags = [t.strip() for t in tagString.split(",")]
+		
+		
 		#tkMessageBox.showinfo("Delete Tags", "Deleting tags: " + "|".join(tags), parent=root)
 		
 		if (tags):
@@ -142,41 +234,181 @@ class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
 			
 			if failed:
 				self.showwarning("Error", "Attempting to remove tags from the following files failed: \n" + "\n".join(failed))
+		
+		updateFiles(files, list(set(cleanedFilenames) - set(failed)))
+		
+	def menu_copyFilesFolders(self, menu, files):
+ 		
+		
+		cleanedFilenames = getCleanFilenames(files)
+		destDir = getCleanFilename(self.chooseDir("Select destination directory:", initialdir=os.path.dirname(getCleanFilename(files[0].get_uri()[7:]))))
+		
+		failedFiles = []
+		print "Trying to copy files to " + destDir + ":\n"
+		
+		for f in cleanedFilenames:
+			
+			if (not mt.copyFile(f, destDir)):
+				failedFiles.insert(0, f)
+		
+		
 
+		newFiles = []
+		
+		if (failedFiles):
+			self.warning("Copy results:", "The following files/folders were NOT successfully copied:" + str(failedFiles))
+			copiedFiles = list(set(cleanedFilenames) -set(failedFiles))
+		else:
+			copiedFiles = cleanedFilenames
+			self.showinfo("Copy Success", "Successfully copied the following files to " + destDir + ": \n" + "\n--".join(cleanedFilenames))
+		
+		
+		newFiles = []
+		for f in copiedFiles:
+				newFiles.insert(0,os.path.join(destDir, os.path.basename(f)))
+				
+		
+		if (newFiles):
+			updateFiles(files, newFiles)
+
+		
+	def menu_moveFilesFolders(self, menu, files):
+		destDir = getCleanFilename(self.chooseDir("Select destination directory:", initialdir=os.path.dirname(getCleanFilename(files[0].get_uri()[7:]))))
+		
+		if (destDir):
+			cleanedFilenames = getCleanFilenames(files)
+			failedFiles = []
+			print "Trying to move files to " + destDir + ":\n"
+			
+			for f in cleanedFilenames:
+				
+				if (not mt.moveFile(f, destDir)):
+					failedFiles.insert(0, f)
+			
+			root = self.__getRootWin()
+			root.withdraw()
+			
+			newfiles = []
+			removedfiles = []
+			
+			if (failedFiles):
+				tkMessageBox.showwarning("Move results:", "The following files/folders were NOT successfully moved:" + str(failedFiles), parent=root)
+				movedFiles = list(set(cleanedFilenames)-set(failedFiles))
+				
+			else:
+				tkMessageBox.showinfo("Move Success", "Successfully moved the following files to " + destDir + ": \n" + "\n--".join(cleanedFilenames), parent=root)
+				movedFiles = list(cleanedFilenames)
+				
+			removedFiles = list(movedFiles)
+			newfiles = []
+			for n in movedFiles:
+				newfiles.insert(0,os.path.join(destDir, os.path.basename(n)))
+					
+			root.destroy()
+			updateFiles(files, newfiles, removedFiles)
+			
+	def menu_renameFileFolder(self, menu, files):
+		root = self.__getRootWin()
+		root.withdraw()
+		
+		if (not len(files) == 1):
+			tkMessageBox.showwarning("Rename failed", "Only one file can be selected for renaming", parent=root)
+		else:
+			
+			cleanedFilename = getCleanFilename(files[0].get_uri()[7:])
+			newname = os.path.join(os.path.dirname(cleanedFilename), getCleanFilename(self.simpleDialog("Rename", "Enter new filename: ")))
+					
+			
+			print "Trying rename file " + cleanedFilename + " to: " + newname + ":\n"
+			
+			success =  mt.renameFile(cleanedFilename, newname)
+			if(not success):
+				tkMessageBox.showwarning("Rename failed", "Cannot rename to: " + newname + "\nPerhaps it already exists?", parent=root)
+			
+		root.destroy()
+		
+		
+	def get_background_items(self, window, file):
+		return None
 		
 	def get_file_items(self, window, files):
 		top_menuitem = Nemo.MenuItem(name='MyTags::menu', 
 										 label='MyTags', 
 										 tip='',
 										 icon='')
-
-		submenu = Nemo.Menu()
-		top_menuitem.set_submenu(submenu)
-
-		sub_menuitem = Nemo.MenuItem(name='MyTags::add', 
+		tagsMenu = Nemo.Menu()
+		tagsSubmenuItem = Nemo.MenuItem(name='MyTags::Tags', 
+										 label='Tags', 
+										 tip='',
+										 icon='')
+		tagsSubmenu = Nemo.Menu()
+		tagsSubmenuItem.set_submenu(tagsSubmenu)
+		
+		filesSubmenuItem = Nemo.MenuItem(name='MyTags::files', 
+										 label='Files', 
+										 tip='',
+										 icon='')
+		filesSubmenu = Nemo.Menu()
+		filesSubmenuItem.set_submenu(filesSubmenu)
+		
+		tagsMenu.append_item(tagsSubmenuItem)
+		tagsMenu.append_item(filesSubmenuItem)
+		top_menuitem.set_submenu(tagsMenu)
+		
+		addTagsMenuItem = Nemo.MenuItem(name='MyTags::add', 
 										 label='AddTags', 
 										 tip='',
 										 icon='')
-		sub_menuitem.connect('activate', self.menu_addtags, files)
-		sub_menuitem2 = Nemo.MenuItem(name='MyTags::delete', 
-										 label='DeleteTags', 
+		addTagsMenuItem.connect('activate', self.menu_addtags, files)
+		
+		removeTagsMenuItem = Nemo.MenuItem(name='MyTags::remove', 
+										 label='Remove', 
 										 tip='',
 										 icon='')
-		sub_menuitem2.connect('activate', self.menu_deletetags, files)  
-		sub_menuitem3 = Nemo.MenuItem(name='MyTags::replace', 
+		removeTagsMenuItem.connect('activate', self.menu_deletetags, files)  
+		
+		replaceTagsMenuItem = Nemo.MenuItem(name='MyTags::replace', 
 										 label='ReplaceTags', 
 										 tip='',
 										 icon='')
-		sub_menuitem3.connect('activate', self.menu_replacetags, files)  
-		sub_menuitem4 = Nemo.MenuItem(name='MyTags::erase', 
-										 label='Erase Tags', 
+		replaceTagsMenuItem.connect('activate', self.menu_replacetags, files)  
+		
+		removeAllTagsMenuItem = Nemo.MenuItem(name='MyTags::remove_all', 
+										 label='Remove All Tags', 
 										 tip='',
 										 icon='')
-		sub_menuitem4.connect('activate', self.menu_erasetags, files)  
-		submenu.append_item(sub_menuitem)
-		submenu.append_item(sub_menuitem2)
-		submenu.append_item(sub_menuitem3)
-		submenu.append_item(sub_menuitem4)
+		removeAllTagsMenuItem.connect('activate', self.menu_erasetags, files)  
+		
+		copyFilesMenuItem = Nemo.MenuItem(name='MyTags::copy_files', 
+										 label='Copy Files', 
+										 tip='',
+										 icon='')
+		copyFilesMenuItem.connect('activate', self.menu_copyFilesFolders, files)  
+		
+		moveFilesMenuItem = Nemo.MenuItem(name='MyTags::move_files', 
+										label='Move Files', 
+										 tip='',
+										 icon='')
+		moveFilesMenuItem.connect('activate', self.menu_moveFilesFolders, files)  
+		
+		if (len(files) == 1):
+			renameFileMenuItem = Nemo.MenuItem(name='MyTags::Rename_file', 
+										label='Rename File', 
+										 tip='',
+										 icon='')
+			renameFileMenuItem.connect('activate', self.menu_renameFileFolder, files)  
+		
+		
+		tagsSubmenu.append_item(addTagsMenuItem)
+		tagsSubmenu.append_item(removeTagsMenuItem)
+		tagsSubmenu.append_item(replaceTagsMenuItem)
+		tagsSubmenu.append_item(removeAllTagsMenuItem)
+		
+		filesSubmenu.append_item(copyFilesMenuItem)
+		filesSubmenu.append_item(moveFilesMenuItem)
+		if (len(files) == 1):
+			filesSubmenu.append_item(renameFileMenuItem)
+		
 		
 		return top_menuitem,
 
