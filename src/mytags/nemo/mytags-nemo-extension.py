@@ -16,17 +16,13 @@ from gi.repository import GObject, Nemo
 #sys.path.append(mytagsLibDir)
 
 import mytags.MyTagsUtils as mt
-import mytags.index as myIndex
-
-
-index = True
-	
+import mytags.index as myIndex	
 
 
 def updateFiles(files, filesChanged, filesRemoved=[]):
 		for f in files:
 			f.invalidate_extension_info()
-		if (index):
+		if (myIndex):
 			myIndex.updateIndexBatch(filesChanged)
 			myIndex.removeBatch(filesRemoved)
 			
