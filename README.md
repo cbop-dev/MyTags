@@ -8,8 +8,8 @@ This is a work in progress!
 
 UPDATE:
 ------
-Version 0.3 is now released. It includes:
-* Nemo extension functions for tags (add/remove-some/remove-all/replace) and files (copy, move, rename).  The interface is fairly basic, without giving additional options.  
+Version 0.3.1 is now released. It includes:
+* Nemo extension functions for tags (add/remove-some/remove-all/replace) and files (copy, move, rename, delete) and on background (clean meta-folder).  The interface is fairly basic, without giving additional options.  
 * The python library (mytags.MyTagsUtils) is what does the file-tagging work and includes the file operations (copy, rename, move, delete) that take sidecar files into account. 
 * Simple command-line bash script (using jq) for reading tags from files (src/mytags/bash/ts-tags)
 * Recoll file-indexing integration. (See installation instructions below.)
@@ -25,13 +25,19 @@ Requirements:
   * pyjq: https://pypi.python.org/pypi/pyjq (jq binding for python)
   * filelock for creating lock-files: https://pypi.python.org/pypi/filelock
   * portalocker for file-locking: https://pypi.python.org/pypi/portalocker
-* For indexing: Recoll 1.23 (https://www.lesbonscomptes.com/recoll)
+* For Python extension:
+  * Nemo (3.x)
+  * nemo-python extension (from the nemo-extension module: https://github.com/linuxmint/nemo-extensions). This may not be a trivial installation (but it is the key to using the Nemo extension!). Thjis module has to be built and installed, but only after the following packages (among others) are already installed: 
+    * gnome-pkg-tools
+    * python-gi-dev 
+    * libnemo-extension-dev
+* For indexing: Recoll 1.23+ (https://www.lesbonscomptes.com/recoll)
 
 There may be other requirements that I've overlooked...
 
 Installation
 -------------------------
-1. Make sure you've installed all the requirements above!  
+1. Make sure you've met all the requirements above!  
 2. Download/Git the repository. 
 2. Copy the "src/mytags/nemo/mytags-nemo-extension" to "~/.local/share/nemo-python/extensions" (or create this directory if it does not exist). 
 3. Copy the "mytags" folder (found in the "src" directory) to a path where python libraries are stored, or add the "src" folder it to your PYTHONPATH environment variable before running Nemo (e.g, in Bash: "env PYTHONPATH=$PYTHONPATH:/home/user/git/MyTags/src" nemo). OR, edit the top of mytags-nemo-extension.py and set the python path as mentioned in the comments.
