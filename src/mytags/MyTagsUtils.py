@@ -91,8 +91,9 @@ def __readFile(filename, uselock=True):
 		print e
 		pass
 	return content
+	
 # Utility function that writes to a file. Makes the parent directory if it does not exist.
-# Returns true if all went well. Returns false if could not access parent directortyor if there was an IOError. Print error to console.	
+# Returns true if all went well. Returns false if could not access parent directorty or if there was an IOError. Print error to console.	
 # Does not check or use the getLockFile() method, since __writeFile may be used for any file, including the .json files. getLockFile()
 # should be used by the code which calls __writeFile
 def __writeFile(filename, content):
@@ -165,7 +166,7 @@ def getTags(filename, uselock=True):
 		
 			with lockFile: #lock for exclusive use of file:
 				tags = __getTagsFromData(__readFile(metafile))
-	else:
+	elif os.path.exists(metafile):
 		tags = __getTagsFromData(__readFile(metafile, uselock))
 
 	return tags
@@ -465,8 +466,27 @@ def deleteFile(filename):
 		os.remove(getMetaFileName(filename))	
 	return not os.path.exists(filename)
 
+'''
+	deleteFolder:
+	Deletes a folder. Only works on an empty directory, 
+	unless recursive=True, in which case, it removes
+	the directory and all of its contents.
+	Does not catch any Exceptions, but if none are thrown, 
+	returns true if given folder no longer exists, 
+	false otherwise.
+'''
+def deleteFolder(foldername, recursive=False):
+	if (recursive):
+		shutil.rmtree(foldername)
+	else:
+		os.rmdir(foldername)
+	success = not os.path.isdir(foldername)
+	if (success):
+		deleteMetaFile(foldername)
+	return success
+	
 # Deletes the given file's sidecar file. Returns True if the given file no longer has a sidecar file.
-# Returns False is sidecar file exists and it could not be removed. 
+# Returns False if sidecar file exists and it could not be removed. 
 def deleteMetaFile(filename):
 	metafile = getMetaFileName(filename)
 	lockFile = getLockFile(filename)
@@ -475,10 +495,61 @@ def deleteMetaFile(filename):
 			os.remove(metafile)
 	return not os.path.exists(metafile)
 
+def cleanMetaFolder(parentdir):
+	metadir = getMetaDir(os.path.join(parentdir, "filename"))
+	#print "In cleanMetaFolder("+parentdir+"):\n"
+	try:
+		for f in findOrphanMetaFiles(parentdir):
+			parentFile = os.path.join(parentdir,os.path.splitext(os.path.basename(f))[0])
+			
+			if (not os.path.exists(parentFile)):
+				#print "Going to remove " + f
+				os.remove(f)
+				
+			else:
+				print "Not going to remove "+ f
+		removeUnusedLocks(metadir)
+	except (OSError, IOError) as e:
+		print "CleanMetaFoldr(" +parentdir+") caught exception: " + str(e)
+
 # Returns list of .JSON metafiles (not parent files!) in the .ts folder of given "directory" that have no corresponding file in "directory'
 def findOrphanMetaFiles(directory):
-	return []
+	directory = trimPath(directory)
+	metadir = getMetaDir(os.path.join(directory, "filename"))
+	orphanedMetaFiles = []
+	
+	if (os.path.isdir(metadir)):
+		for f in os.listdir(metadir):
+			(root, ext) = os.path.splitext(f)
+			parentFile = os.path.join(directory, root)
+			if (ext == ".json") and (not os.path.exists(parentFile)): # orphaned metaFile!
+				orphanedMetaFiles.insert(0,os.path.join(metadir, f))
+				#print "Found orphaned metafile: " + os.path.join(metadir, f)  + "\n"
+		
+	return orphanedMetaFiles
 
+def removeUnusedLocks(metadir):
+	#print "removeUnusedLocks("+metadir+"):\n"
+	if (os.path.isdir(metadir)):
+		for f in os.listdir(metadir):
+			print "checking " + f 
+			(root, ext) = os.path.splitext(f)
+			#print "root: " + root + ", ext = " + ext
+			if ext == ".lock":
+				parentFile = os.path.join(os.path.dirname(metadir), root)
+				#print "Checking if parent file " + parentFile + " exists..."
+				if (not os.path.exists(parentFile)):
+					
+					#print "No! About to remove " + os.path.join(metadir, f)
+					os.remove(os.path.join(metadir, f))
+				else:
+					#print "Yes! Not going to remove"
+					pass
+					
+			else:
+				pass
+				#print "Ext ("+ext+") is not '.lock'"
+		
 def cl_getTags(args):
 	print "\n".join(getTags(args.filename, False))
 	
