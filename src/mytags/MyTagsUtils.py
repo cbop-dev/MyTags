@@ -114,7 +114,7 @@ def __generateJSON(tags):
 			content +=','
 		else: # @first Tag, allow for next tag to have comma...
 			firstTag = False
-		content += '{"title":"' + t + '","type":"sidecar"}'
+		content += '{"title":"' + t.lower() + '","type":"sidecar"}'
 		
 	content += '],"appName":"MyTags"}'
 	return content
@@ -148,7 +148,10 @@ def __getTagsFromData(data, raw=True):
 	tags = []
 	try:
 		json.loads(data)
-		tags = pyjq.all(data +  '| .tags[] | .title')  
+		rawtags = pyjq.all(data +  '| .tags[] | .title')  
+		for t in rawtags:
+			tags.append(t.lower())
+			
 	except ValueError as e:
 		pass#print "getTags ERROR for file ("+filename+") caught pyjq value error using data: \n" + data + "\n"
 		#print e
@@ -188,9 +191,8 @@ def getTags(filename, uselock=True):
 #				if success == true, failedFiles is empty.
 ##
 def addTags(filename, tags):	
-	#TODO: check for avoid blocking scenario instead of "with lock" statement?
 	metafile = getMetaFileName(filename)
-	
+
 	for t in tags:
 		if not isValidTag(t):
 			return (False, t)
@@ -221,7 +223,7 @@ def addTags(filename, tags):
 	
 	#print "Successfully completed addTags()"
 	return (True, None)
-			#jq -R '{"title":.,"type":"sidecar"}'  | jq -s -c 'unique|{"tags":.,"appName":"jq-jtags"}'
+			
 
 def addTagsBulk(filenames, tags):
 	failedFiles = []

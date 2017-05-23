@@ -70,8 +70,8 @@ class myTagTests(object):
 				 addTagsTest, 
 				 DeleteTagsTest,
 				 ReplaceTagsTest,
-				 FileOperationsTest
-				 
+				 FileOperationsTest,
+				 CaseInsensitiveTagsTest
 				 ]
 		
 		suite1 = unittest.TestSuite()
@@ -167,18 +167,22 @@ class addTagsTest(TestWithFiles):
 	
 	def test2_ComplexValidTagNames(self):
 		tags = ["tag1-asdf_asdflasdf","ta()g2", "tAg@3", "!@ta=g7","asoijfija;sdjasdlfka;sdlfkjas;dlfka;dfjajfaioj;ljjiojfijijadghigyu@!--___"]
+		lTags = []
+		for t in tags:
+			lTags.append(t.lower())
+			
 		oFile = testdatadir + "/testfile 2"
 		cFile = oFile + "-copy"
-		(success1,failures1) = mt.addTags(oFile, tags)
+		(success1,failures1) = mt.addTags(oFile, lTags)
 		shutil.copyfile(mt.getMetaFileName(oFile),  mt.getMetaFileName(cFile))
 		shutil.copyfile(oFile, cFile)
 			
 		oFile = testdatadir + "/testfile 2"
 		cFile = oFile + "-copy"
-		(success2,failures2) = mt.addTags(cFile, tags)
+		(success2,failures2) = mt.addTags(cFile, lTags)
 		self.assertTrue(success1 and success2)
-		self.assertTrue(len(mt.getTags(cFile)) == 9, "Len: " + str(len(mt.getTags(cFile))))
-		self.assertTrue(set(tags) | set(self.testFilesTags[oFile][0]) == set(mt.getTags(cFile)), mt.getTags(cFile))
+		self.assertTrue(len(mt.getTags(cFile)) == 9, "Should have 9 tags: " + str(mt.getTags(cFile)))
+		self.assertTrue(set(lTags) | set(self.testFilesTags[oFile][0]) == set(mt.getTags(cFile)), mt.getTags(cFile))
 		
 	def test4_BulkAdd(self):
 		tags = ["tag_1", "another-tag", "waiting", "long_qw@$!@$", "fun-times!", "rancid"]
@@ -191,7 +195,7 @@ class addTagsTest(TestWithFiles):
 			
 			self.assertTrue(len(mt.getTags(filename)) == len(set(values[0]) | set(tags)), len(mt.getTags(filename)))
 			self.assertTrue(set(mt.getTags(filename)) == (set(values[0]) | set(tags)), filename + ": " + "|".join(mt.getTags(filename)) + ";\n values[0]: " + "|".join(values[0]))
-			
+		
 			
 		
 		
@@ -206,6 +210,16 @@ class addTagsTest(TestWithFiles):
 			mt.addTags(filename, values[0])
 			self.assertTrue(set(values[0]) == set(mt.getTags(filename)))
 			#self.assertTrue(len(values[0]) == len(mt.getTags(filename)))
+		
+		
+	def test7_CaseInsensitiveAddTest(self):
+		self.testFilesTags = {testdatadir + "/testfile 2" : [
+					["waiting","high","20170426","test"],
+					'{"tags":[{"title":"wAiting","type":"sidecar","style":""},{"title":"high","type":"sidecar","style":"color: #ffffff !important; background-color: #ff7537 !important;"},{"title":"20170426","type":"sidecar","style":""},{"title":"test","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"}],"appVersionCreated":"2.6.0","appName":"TagSpaces","appVersionUpdated":"2.6.0","lastUpdated":"2017-04-27T03:46:04.342Z"}'
+					]}
+		self.setUp()
+		for filename, values in self.testFilesTags.items():
+			self.assertTrue( set(values[0]) == set(mt.getTags(filename)), mt.getTags(filename))
 			
 	def test3_AddExistingTags(self):
 		#(success,failures) = mt.addTags(
@@ -224,8 +238,31 @@ class addTagsTest(TestWithFiles):
 		
 		mt.addTags(thedir, tags)
 		self.assertTrue(set(mt.getTags(thedir)) == set(tags), mt.getTags(thedir))
-	
-	
+
+class CaseInsensitiveTagsTest(TestWithFiles):
+	testFilesTags = {testdatadir + "/file1" : [[], ""],
+					 testdatadir + "/testfile 2" : [
+						["waiting","high","20170426","test"],
+						'{"tags":[{"title":"waiting","type":"sidecar","style":""},{"title":"High","type":"sidecar","style":"color: #ffffff !important; background-color: #ff7537 !important;"},{"title":"20170426","type":"sidecar","style":""},{"title":"teST","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"}],"appVersionCreated":"2.6.0","appName":"TagSpaces","appVersionUpdated":"2.6.0","lastUpdated":"2017-04-27T03:46:04.342Z"}'
+						],
+					 testdatadir +"/testfilename.extension" : [
+						["low", "long_qw@$!@$", "longe-tag-with-several-hyphens"],
+						'{"tags":[{"title":"lOw","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"},{"title":"long_qw@$!@$","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"},{"title":"lOnge-tag-with-several-hyphens","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"}],"appVersionCreated":"2.6.0","appName":"TagSpaces","appVersionUpdated":"2.6.0","lastUpdated":"2017-04-28T03:11:00.949Z"}'
+						]
+						
+					 }
+	def test1_getTags(self):
+		for filename, values in self.testFilesTags.items():
+			self.assertTrue(set(values[0]) == set(mt.getTags(filename)))
+			
+	def test2_addTags(self):
+		rawtags = ["fRed", "fred", "FReD", "jack-is-nimBLe"]
+		actualTags = ["fred", "jack-is-nimble"]
+		
+		for filename, values in self.testFilesTags.items():
+			self.assertTrue(mt.addTags(filename,rawtags))
+			self.assertTrue(set(mt.getTags(filename)) - set(values[0]) == set(actualTags), str(actualTags) + "; " + str(mt.getTags(filename)))
+			
 class DeleteTagsTest(TestWithFiles):
 	testFilesTags = {testdatadir + "/file1" : [[], ""],
 					 testdatadir + "/testfile 2" : [
@@ -274,7 +311,7 @@ class DeleteTagsTest(TestWithFiles):
 class ReplaceTagsTest(TestWithFiles):
 	
 	def test1_replaceTags(self):
-		tags = ["faith", "Hope", "charity!", "somethingelse", "@nevermore"]
+		tags = ["faith", "hope", "charity!", "somethingelse", "@nevermore"]
 		
 		for filename, values in self.testFilesTags.items():
 			self.assertTrue(mt.replaceTags(filename, tags), filename)
