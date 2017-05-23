@@ -31,7 +31,7 @@ Requirements:
     * gnome-pkg-tools
     * python-gi-dev 
     * libnemo-extension-dev
-* For indexing: Recoll 1.23+ (https://www.lesbonscomptes.com/recoll)
+* For indexing: Recoll 1.23+ (https://www.lesbonscomptes.com/recoll). (For apt-get, you may need to add ppa:recoll-backports/recoll-1.15-on to your repositories [e.g., "sudo add-apt-repository ppa:recoll-backports/recoll-1.15-on"]).
 
 There may be other requirements that I've overlooked...
 
