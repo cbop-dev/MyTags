@@ -9,22 +9,36 @@ import tkMessageBox, tkFileDialog
 gi.require_version('Nemo', '3.0')
 from gi.repository import GObject, Nemo
 
+###########################################
+#### CONFIGURATION:
+
+''' Enable/Disable indexing: '''
+indexing = True
+
 ''' The "mytags" dir, under "src" in the repo, must be in your python path. 
 	Either copy the directory to one already in your $PYTHONPATH env variable (on Linux), or add it below and uncomment the next two lines.
 '''
-#mytagsLibDir = "/path/to/mytags/src"
-#sys.path.append(mytagsLibDir)
+mytagsLibDir = "/path/to/mytags/src"
+sys.path.append(mytagsLibDir)
+
+#### END CONFIGURATION
+###########################################
 
 import mytags.MyTagsUtils as mt
-import mytags.index as myIndex
+import mytags.index
 
+if config.indexing:
+	myIndexThread = mytags.index.UpdateIndexQueueThread()
+	myIndexThread.start()
 
 def updateFiles(files, filesChanged, filesRemoved=[]):
 		for f in files:
 			f.invalidate_extension_info()
-		if (myIndex):
-			myIndex.queueFilesUpdate(filesChanged)
-			myIndex.queueFilesRemove(filesRemoved)
+		if (myIndexThread):
+			if (filesChanged):
+				myIndexThread.queueFilesUpdate(filesChanged)
+			if (filesRemoved):
+				myIndexThread.queueFilesRemove(filesRemoved)
 			
 def getFilename(thefile):
 	return getCleanFilename(thefile.get_uri()[7:])

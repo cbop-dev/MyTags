@@ -15,16 +15,22 @@ invalidTagChars = " \"',:/\\|<>	"
 def trimPath(filename):
 	return filename.rstrip('/\\')
 
+def getRealPath(filepath):
+	if (os.path.islink(filepath)):
+		filepath = os.path.realpath(filepath)
+	return filepath
+	
 def getMetaDir(filename):
 	return os.path.join(os.path.dirname(trimPath(filename)), '.ts')
 	
 def getMetaFileName(filePath):
-	filePath = trimPath(filePath)
+	filePath = getRealPath(trimPath(filePath))
 	return os.path.join(getMetaDir(filePath), os.path.basename(filePath) + ".json")
 
-
 def getParentFile(metafile):
-	(metafolder, json) = os.path.split(metafile.rstrip('/\\'))
+	metafile = getRealPath(trimPath(metafile))
+	
+	(metafolder, json) = os.path.split(metafile)
 	#print "Meta folder after split: " + metafolder
 	#print "Json file after split: "+ json
 	#print " New path will be: " + metafolder[:-4] + "/" + json[:-5]
@@ -50,7 +56,7 @@ def checkDir(dir):
 
 
 def getLockFileName(filename):
-	filename = trimPath(filename)
+	filename = getRealPath(trimPath(filename))
 	return os.path.join(getMetaDir(filename), os.path.basename(filename) + ".lock")
 
 
@@ -59,7 +65,7 @@ def getLockFileName(filename):
 ## This can be subsequently used with "with" statement block, or manually by using acquire() and release()
 ## "filename" should only be the full pathname of the main file, NOT the (.json) metafile in the metafolder.
 def getLockFile(filename):
-	filename = trimPath(filename)
+	filename = getRealPath(trimPath(filename))
 	lock = None
 	
 	if __checkMakeDir(getMetaDir(filename)):
@@ -160,6 +166,9 @@ def __getTagsFromData(data, raw=True):
 def getTags(filename, uselock=True):
 	
 	tags = []
+	if (os.path.islink(filename)):
+		filename = os.path.realpath(filename)
+		
 	metafile = getMetaFileName(filename)
 	
 	if (uselock):
