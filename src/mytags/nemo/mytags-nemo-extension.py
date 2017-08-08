@@ -26,6 +26,7 @@ sys.path.append(mytagsLibDir)
 
 import mytags.MyTagsUtils as mt
 import mytags.index
+import mytags.config as config
 
 if config.indexing:
 	myIndexThread = mytags.index.UpdateIndexQueueThread()
@@ -34,7 +35,7 @@ if config.indexing:
 def updateFiles(files, filesChanged, filesRemoved=[]):
 		for f in files:
 			f.invalidate_extension_info()
-		if (myIndexThread):
+		if (config.indexing and myIndexThread):
 			if (filesChanged):
 				myIndexThread.queueFilesUpdate(filesChanged)
 			if (filesRemoved):
@@ -364,6 +365,18 @@ class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
 			
 		root.destroy()
 	
+	def menu_indexFiles(self, menu, files):
+		if (config.indexing):
+			cleanedFilenames = getCleanFilenames(files)
+			
+			root = self.__getRootWin()
+			root.withdraw()
+						
+			self.simpleConfirm("Index Files", "(Re)Index the selected files?" + "\n".join(cleanedFilenames))
+								
+			myIndexThread.queueFilesUpdate(cleanedFilenames)
+			root.destroy()
+			
 	def menu_cleanmeta(self,menu, file):
 		confirmed = self.simpleConfirm("Clean Metafolder?", "Check and clean unnecessary files from metafolder?")
 		
@@ -457,6 +470,11 @@ class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
 										 icon='')
 		deleteFilesMenuItem.connect('activate', self.menu_deleteFiles, files)  
 		
+		indexFilesMenuItem =  Nemo.MenuItem(name='MyTags::index_files', 
+										label='Index Files', 
+										 tip='',
+										 icon='')
+		indexFilesMenuItem.connect('activate', self.menu_indexFiles, files)  
 		
 		if (len(files) == 1):
 			renameFileMenuItem = Nemo.MenuItem(name='MyTags::Rename_file', 
@@ -476,6 +494,7 @@ class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
 		if (len(files) == 1):
 			filesSubmenu.append_item(renameFileMenuItem)
 		filesSubmenu.append_item(deleteFilesMenuItem)
+		filesSubmenu.append_item(indexFilesMenuItem)
 		
 		return top_menuitem,
 
