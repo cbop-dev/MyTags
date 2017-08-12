@@ -1,6 +1,7 @@
 import os
 import urllib
 import gi
+import inspect
 import sys
 from Tkinter import *		   # Importing the Tkinter (tool box) library 
 import tkSimpleDialog
@@ -402,7 +403,11 @@ class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
 		top_menuitem.set_submenu(tagsMenu)
 
 		
-		return top_menuitem,
+		return top_menuitem
+	
+	def openConfig(self, extra):
+		configFile = inspect.getsourcefile(config)
+		os.system('xdg-open "' + configFile + '"')
 		
 	def get_file_items(self, window, files):
 		top_menuitem = Nemo.MenuItem(name='MyTags::menu', 
@@ -417,15 +422,24 @@ class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
 		tagsSubmenu = Nemo.Menu()
 		tagsSubmenuItem.set_submenu(tagsSubmenu)
 		
-		filesSubmenuItem = Nemo.MenuItem(name='MyTags::files', 
+		filesSubmenuItem = Nemo.MenuItem(name='MyTags::Files', 
 										 label='Files', 
 										 tip='',
 										 icon='')
 		filesSubmenu = Nemo.Menu()
 		filesSubmenuItem.set_submenu(filesSubmenu)
 		
+		
+		configMenuItem = Nemo.MenuItem(name='MyTags::config', 
+										 label='Config', 
+										 tip='',
+										 icon='')
+		configMenuItem.connect('activate', self.openConfig)
+		
 		tagsMenu.append_item(tagsSubmenuItem)
 		tagsMenu.append_item(filesSubmenuItem)
+		tagsMenu.append_item(configMenuItem)
+		
 		top_menuitem.set_submenu(tagsMenu)
 		
 		addTagsMenuItem = Nemo.MenuItem(name='MyTags::add', 
