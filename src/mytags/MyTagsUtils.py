@@ -474,7 +474,9 @@ def deleteFile(filename):
 	lockFile = getLockFile(filename)
 	with lockFile:
 		os.remove(filename);
-		os.remove(getMetaFileName(filename))	
+		metaF = getMetaFileName(filename)
+		if (os.path.exists(metaF)):
+			os.remove(metaF)
 	return not os.path.exists(filename)
 
 '''
