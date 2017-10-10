@@ -355,16 +355,18 @@ class FileOperationsTest(TestWithFiles):
 		
 		self.assertTrue(os.path.exists(self.tFile))
 		self.assertTrue((True, None) == mt.addTags(self.tFile, ["test","tag2"]))
+		
+		#test on read-only directory: should throw permissions error
 		os.chmod(self.tDir, S_IRUSR)
 		
 		caughtError = False
-		print "Entering try block"
+		#print "Entering try block"
 		
 		try: 
 			mt.deleteFile(self.tFile)
 		except (OSError, AttributeError) as e:
-			print e
-			print "Error rightly caught: " + str(e)
+		#	print e
+		#	print "Error rightly caught: " + str(e)
 			caughtError = True
 			#else:
 			#	raise e
@@ -372,7 +374,36 @@ class FileOperationsTest(TestWithFiles):
 		self.assertTrue(caughtError)
 		
 		os.chmod(self.tDir, S_IWUSR|S_IRUSR|S_IXUSR)
+		
+		mt.deleteFile(mt.getMetaFileName(self.tFile))
+		
+		#try deleting a file that has no metafile
+		self.assertTrue(mt.write(self.tFile, content))
+		self.assertTrue(mt.deleteFile(self.tFile))
 	
+	def test2_deleteFolder(self):
+		subDir = os.path.join(self.tFile, "sub1");
+		
+		self.assertTrue(mt.checkDir(self.tFile))
+				
+		
+		self.assertTrue(mt.deleteFolder(self.tFile))
+		
+		#make recreate folder, now with sub-directory:
+		self.assertTrue(mt.checkDir(subDir))
+				
+		caughtError = False
+		# should fail, because folder is not empty
+		try:
+			mt.deleteFolder(self.tFile)
+		except OSError as e:
+			caughtError = True
+		
+		
+		#should succeed, with recursive option:
+		self.assertTrue(mt.deleteFolder(self.tFile, True))
+		
+		
 	def test2_deleteMetaFile(self):
 		for f in self.testFilesTags.keys():
 			self.assertTrue(os.path.exists(mt.getMetaFileName(f)))
