@@ -398,12 +398,20 @@ class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
 										 label='Clean Metafolder', 
 										 tip='',
 										 icon='')
-		tagsMenu.append_item(cleanMetaFolderItem)
-		cleanMetaFolderItem.connect('activate', self.menu_cleanmeta, file)  
-		top_menuitem.set_submenu(tagsMenu)
-
 		
-		return top_menuitem
+		cleanMetaFolderItem.connect('activate', self.menu_cleanmeta, file)  
+		
+		configMenuItem = Nemo.MenuItem(name='MyTags::config', 
+										 label='Config', 
+										 tip='',
+										 icon='')
+		configMenuItem.connect('activate', self.openConfig)
+		
+		tagsMenu.append_item(cleanMetaFolderItem)
+		tagsMenu.append_item(configMenuItem)
+		top_menuitem.set_submenu(tagsMenu)
+		
+		return top_menuitem,
 	
 	def openConfig(self, extra):
 		configFile = inspect.getsourcefile(config)
