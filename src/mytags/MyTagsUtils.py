@@ -607,9 +607,13 @@ def removeUnusedLocks(metadir):
 				pass
 				#print "Ext ("+ext+") is not '.lock'"
 		
-def cl_getTags(args):
-	print "\n".join(getTags(args.filename, False))
+def printTags(tags):
+	print " ".join(tags)
 	
+def cl_getTags(args):
+	printTags(getTags(args.filename, False))
+	
+
 def commandLine():
 	#print sys.argv
 	import argparse
@@ -617,9 +621,9 @@ def commandLine():
 	parser = argparse.ArgumentParser(description='Manage file/folder tags in sidecar files (.ts)')
 	#parser.add_argument('command', metavar='[command]', type=int, nargs='+', help='an integer for the accumulator')
 	subparsers = parser.add_subparsers(help='[command] help')
-	parser_get = subparsers.add_parser('get', help='get help')
-	parser_get.add_argument('filename', metavar='Filename', type=str, help='Filename')
-	parser_get.set_defaults(func=cl_getTags)
+	parser_tags = subparsers.add_parser('tags', help='get help')
+	parser_tags.add_argument('filename', metavar='Filename', type=str, help='Filename')
+	parser_tags.set_defaults(func=cl_getTags)
 	#parser_get.add_argument('tag', metavar='tag', type=str, nargs = '+', help='tag')
 	args = parser.parse_args()
 	args.func(args)
