@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import os.path
+import os
 import fileinput
 import pyjq
 import sys
@@ -48,7 +49,7 @@ def getParentFile(metafile):
 
 #Public wrapper for private __writeFile method
 def write(filename, content):
-	return __writeFile(filename, content)
+	return __writeFile(getRealPath(filename), content)
 	
 #Attempts to make directory, if one does not exist. Returns false only if requested directory is not usable.
 def checkDir(dir):
@@ -84,6 +85,7 @@ def __checkMakeDir(dir):
 
 
 def __readFile(filename, uselock=True):
+	filename = getRealPath(filename)
 	content = ''
 	try:
 		if (uselock):
@@ -103,6 +105,7 @@ def __readFile(filename, uselock=True):
 # Does not check or use the getLockFile() method, since __writeFile may be used for any file, including the .json files. getLockFile()
 # should be used by the code which calls __writeFile
 def __writeFile(filename, content):
+	filename = getRealPath(filename)
 	if __checkMakeDir(os.path.dirname(filename)):
 		try:
 			with portalocker.Lock(filename, "w") as f:
@@ -164,6 +167,7 @@ def __getTagsFromData(data, raw=True):
 	return tags
 	
 def getTags(filename, uselock=True):
+	filename = getRealPath(filename)
 	
 	tags = []
 	if (os.path.islink(filename)):
@@ -200,6 +204,7 @@ def getTags(filename, uselock=True):
 #				if success == true, failedFiles is empty.
 ##
 def addTags(filename, tags):	
+	filename = getRealPath(filename)
 	metafile = getMetaFileName(filename)
 
 	for t in tags:
@@ -237,6 +242,7 @@ def addTags(filename, tags):
 def addTagsBulk(filenames, tags):
 	failedFiles = []
 	for f in filenames:
+		f = getRealPath(f)
 		(success, failedTags) = addTags(f, tags)
 		if not success:
 			failedFiles.insert(0, f)
@@ -245,6 +251,7 @@ def addTagsBulk(filenames, tags):
 		
 
 def removeAllTags(filename):
+	filename = getRealPath(filename)
 	## Create bare json file with  empty dictionary "appName":"MyTags"
 	# consider another option: just delete the metafile!
 	result = False
@@ -255,6 +262,7 @@ def removeAllTags(filename):
 	return result
 	
 def removeSomeTags(filename, removeTags):
+	filename = getRealPath(filename)
 	# Attempts to remove the given tags from the metafile of the given file. 
 	# Returns: True if file exists and it no longer as any of the tags from 'removeTags' in its metafile (if metafile exists).
 	# 		   False otherwise.
@@ -305,6 +313,7 @@ def removeSomeTags(filename, removeTags):
 	Throws Exception if lock or IO error occured.
 '''
 def replaceTags(filename, tags):
+	filename = getRealPath(filename)
 	for t in tags:
 		if not isValidTag(t):
 			return (False, t)
@@ -327,7 +336,9 @@ def replaceTags(filename, tags):
 	if this is the case, 'reason' contains a message about why this is which can be 
 	used for loggin.
 '''
-def __checkSrcDest(src,dest, safe=True):
+def __checkSrcDest(src,dest, safe=True, hardLink=False):
+	src = getRealPath(src)
+	
 	success = True
 	reason = ''
 	src = trimPath(src)
@@ -343,10 +354,10 @@ def __checkSrcDest(src,dest, safe=True):
 		success = checkDir(os.path.dirname(dest))
 		if (not success):
 			reason = "Could not access parent"
-	elif (os.path.isfile(dest) and (safe or os.path.isdir(src))): #
+	elif (os.path.isfile(dest) and (safe or hardLink or os.path.isdir(src))): #
 		if (os.path.exists(dest)):
 			pass #print "The following dest exists: " +dest
-		reason = "Cannot move src["+src+"] to existing dest file ["+dest+"]: either safe mode is on, or src is dir!"
+		reason = "Cannot move src-file["+src+"] to existing dest file ["+dest+"]: either safe mode is on, or src is dir!"
 		success = False
 	elif (os.path.isdir(dest)): # src moved to be child of dest.
 		if not checkDir(dest):
@@ -362,6 +373,8 @@ def __checkSrcDest(src,dest, safe=True):
 				elif safe: #file by this name already exists, but safe mode is on:
 					success = False
 					reason = "trying to move into dest folder, but file by this name alreadt exists"
+	#else:
+	#	print("checkSrcDest() found no errors. Returning success...")
 	return (success, dest, reason)
 
 # Move a file, and its sidecar file, to the destination. 
@@ -374,6 +387,7 @@ def __checkSrcDest(src,dest, safe=True):
 # 			False if it did not but did not throw error. OSError Exception will be caught and not re-raised. Other exceptions are not caught.
 # Errors:   Any Exceptions besides an OSError will be raised/passed to the calling block, and not handled/trapped here.
 def moveFile(src, dest, safe=True):
+	src = getRealPath(src)
 	#print "inside moveFile(" +src +"," +dest
 	src = trimPath(src)
 	dest = trimPath(dest)
@@ -420,6 +434,7 @@ def moveFile(src, dest, safe=True):
 # False:	False if it did not but did not throw error. 
 # Errors:   Any Exceptions (e.g., IOError) will be raised/passed to the calling block, and not handled/trapped here.
 def renameFile(srcFilePath, newname):
+	srcFilePath = getRealPath(srcFilePath)
 	return moveFile(srcFilePath, os.path.join(os.path.dirname(srcFilePath), newname))
 	
 # Copies a file, and its sidecar file (if it exists), to the destination. 
@@ -427,16 +442,18 @@ def renameFile(srcFilePath, newname):
 #			destFilePath - either the full path of the directory to copy the file, or the full path of the new filename.
 #			safe - If true (default), will not overwrite the destFilePath if its exist; 
 #				   in such a case does nothing and returns False.
+#			hardLink: If true (default: false), function will attempt to create a hardlink at src, instead of copy.
+# 				Only matters if src is a file, not a dir. 
 # Return:	True if file copied successfuly
 # False:	False if it did not but did not throw error. 
 # Errors:   Any Exceptions (e.g., IOError) will be raised/passed to the calling block, and not handled/trapped here.
-def copyFile(src, dest, safe=True):
-	
-	src = trimPath(src)
+def copyFile(src, dest, safe=True,hardLink=False):
+	src = trimPath(getRealPath(src))
+	#src = trimPath(src)
 	dest = trimPath(dest)
 	
-	(success, dest, reason) = __checkSrcDest(src, dest, safe)
-
+	(success, dest, reason) = __checkSrcDest(src, dest, safe, hardLink)
+	
 	srcMeta = getMetaFileName(src)
 	destMeta = getMetaFileName(dest)
 	
@@ -451,18 +468,39 @@ def copyFile(src, dest, safe=True):
 						if (os.path.exists(srcMeta) and checkDir(getMetaDir(dest))):
 							shutil.copy2(srcMeta, destMeta)
 					else: #working with files; using file-locks:
-						with portalocker.Lock(dest, "w") as d:
-							with portalocker.Lock(src, "r") as s:
-							#print "Got all the locks we need! Trying to rename..."
-								shutil.copy2(src, dest)
-								if (os.path.exists(srcMeta) and checkDir(getMetaDir(dest))):
-									shutil.copy2(srcMeta, destMeta)
+						if (hardLink): # hardlink: use os.link(). Must check if dest is dir:
+							if( os.path.isdir(dest)): # copying one file into another folder
+								originalDest = dest
+								dest = os.path.join(dest, os.path.basename(src))
+								print("Had to turn dest[" + originalDest + "] folder into full path of filename [" + dest + "]")
+								# give dest a filename instead of dir, to avoid hardLink problem.
+								if (os.path.exists(dest)):
+									print ("Hmmm...new dest already exists!")
+							with portalocker.Lock(src, "r") as s: # cannot use portraLocker on dest with os.link()
+							#print "Got all the locks we need! Trying to copy..."
+								#print ("trying HARDLINK1..." + src + " -> " + dest)
+								#if (os.path.exists(dest)):
+								#		print "But dest [" + dest + "] already exists! This should not have happened..."
+								os.link(src,dest)
+								#	print "made HARDLINK1..."
+						else: #no hardlink. doing the normal stuff...
+							with portalocker.Lock(dest, "w") as d:
+								with portalocker.Lock(src, "r") as s:
+								#print "Got all the locks we need! Trying to copy..."
+									shutil.copy2(src, dest)
+						#copy meta files; 
+						if (os.path.exists(srcMeta) and checkDir(getMetaDir(dest))):
+							if (hardLink): # try making link!
+								#print "trying HARDLINK2..."
+								os.link(srcMeta, destMeta)
+								#print "made HARDLINK2..."
+							else:
+								shutil.copy2(srcMeta, destMeta)
 								
 				except  OSError as e:
-					print "\nCaught error in copyfile() function:\n"
-					#print e
-					reason = "caught error in renaming: "
+					reason = "\nCaught error in copyfile() function:\n"
 					reason += str(e)
+					print reason
 					success = False
 		
 	#print "Copying file to "+  dest + " returning " + str(success and os.path.exists(dest)) 
@@ -471,6 +509,7 @@ def copyFile(src, dest, safe=True):
 	return dest if success else ''
 
 def deleteFile(filename):
+	filename = getRealPath(filename)
 	lockFile = getLockFile(filename)
 	with lockFile:
 		os.remove(filename);
@@ -489,6 +528,7 @@ def deleteFile(filename):
 	false otherwise.
 '''
 def deleteFolder(foldername, recursive=False):
+	foldername = getRealPath(foldername)
 	if (recursive):
 		shutil.rmtree(foldername)
 	else:
@@ -501,6 +541,7 @@ def deleteFolder(foldername, recursive=False):
 # Deletes the given file's sidecar file. Returns True if the given file no longer has a sidecar file.
 # Returns False if sidecar file exists and it could not be removed. 
 def deleteMetaFile(filename):
+	filename = getRealPath(filename)
 	metafile = getMetaFileName(filename)
 	lockFile = getLockFile(filename)
 	with lockFile:
@@ -509,6 +550,7 @@ def deleteMetaFile(filename):
 	return not os.path.exists(metafile)
 
 def cleanMetaFolder(parentdir):
+	parentdir = getRealPath(parentdir)
 	metadir = getMetaDir(os.path.join(parentdir, "filename"))
 	#print "In cleanMetaFolder("+parentdir+"):\n"
 	try:
@@ -527,6 +569,7 @@ def cleanMetaFolder(parentdir):
 
 # Returns list of .JSON metafiles (not parent files!) in the .ts folder of given "directory" that have no corresponding file in "directory'
 def findOrphanMetaFiles(directory):
+	directory = getRealPath(directory)
 	directory = trimPath(directory)
 	metadir = getMetaDir(os.path.join(directory, "filename"))
 	orphanedMetaFiles = []
@@ -542,6 +585,7 @@ def findOrphanMetaFiles(directory):
 	return orphanedMetaFiles
 
 def removeUnusedLocks(metadir):
+	metadir = getRealPath(metadir)
 	#print "removeUnusedLocks("+metadir+"):\n"
 	if (os.path.isdir(metadir)):
 		for f in os.listdir(metadir):

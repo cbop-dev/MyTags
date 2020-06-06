@@ -275,20 +275,27 @@ class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
 
 	
 	def menu_copyFilesFolders(self, menu, files):
- 		
+		self.copyFilesFolders(menu,files)
 		
+	def menu_makeHardLinkFiles(self, menu, files):
+		self.copyFilesFolders(menu,files, hardLink=True)
+		
+	def copyFilesFolders(self,menu,files, hardLink=False):
+	
+ 			
 		cleanedFilenames = getCleanFilenames(files)
 		destDir = getCleanFilename(self.chooseDir("Select destination directory:", initialdir=os.path.dirname(getCleanFilename(files[0].get_uri()[7:]))))
 		
 		failedFiles = []
-		print "Trying to copy files to " + destDir + ":\n"
+		if (hardLink):
+			print "Trying to create hardlink: " + destDir + ":\n"
+		else:
+			print "Trying to copy files to " + destDir + ":\n"
 		
 		for f in cleanedFilenames:
 			
-			if (not mt.copyFile(f, destDir)):
+			if (not mt.copyFile(f, destDir, hardLink=hardLink)):
 				failedFiles.insert(0, f)
-		
-		
 
 		newFiles = []
 		
@@ -299,12 +306,10 @@ class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
 			copiedFiles = cleanedFilenames
 			self.showinfo("Copy Success", "Successfully copied the following files to " + destDir + ": \n" + "\n--".join(cleanedFilenames))
 		
-		
 		newFiles = []
 		for f in copiedFiles:
 				newFiles.insert(0,os.path.join(destDir, os.path.basename(f)))
 				
-		
 		if (newFiles):
 			updateFiles(files, newFiles)
 
@@ -480,6 +485,12 @@ class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
 										 icon='')
 		copyFilesMenuItem.connect('activate', self.menu_copyFilesFolders, files)  
 		
+		linkFilesMenuItem = Nemo.MenuItem(name='MyTags::link_files', 
+										 label='Hardlink', 
+										 tip='',
+										 icon='')
+		linkFilesMenuItem.connect('activate', self.menu_makeHardLinkFiles, files)  
+		
 		moveFilesMenuItem = Nemo.MenuItem(name='MyTags::move_files', 
 										label='Move Files', 
 										 tip='',
@@ -512,6 +523,7 @@ class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
 		tagsSubmenu.append_item(removeAllTagsMenuItem)
 		
 		filesSubmenu.append_item(copyFilesMenuItem)
+		filesSubmenu.append_item(linkFilesMenuItem)
 		filesSubmenu.append_item(moveFilesMenuItem)
 		if (len(files) == 1):
 			filesSubmenu.append_item(renameFileMenuItem)

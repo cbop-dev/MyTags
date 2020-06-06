@@ -433,6 +433,7 @@ class FileOperationsTest(TestWithFiles):
 	def test5_CopyfileTest(self):
 		tDir = os.path.join(testdatadir, "tmpss")
 		tDir2 = os.path.join(testdatadir, "tmpsss")
+		
 		if mt.checkDir(tDir):
 			for f, values in self.testFilesTags.items():
 				mt.addTags(f, values[0])
@@ -471,8 +472,53 @@ class FileOperationsTest(TestWithFiles):
 			self.assertTrue(os.path.exists(newloc), newloc)
 			self.assertTrue(set(mt.getTags(newloc)) == set(v[0]), newloc)
 		
+	def test6_LinkfileTest(self):
+		tDir = os.path.join(testdatadir, "tmpss")
+		tDir2 = os.path.join(testdatadir, "tmpsss")
+		
+		if mt.checkDir(tDir):
+			for f, values in self.testFilesTags.items():
+				mt.addTags(f, values[0])
+				self.assertTrue(set(mt.getTags(f)) == set(values[0]))
+				#print "copying " + f + " to "+ tDir# +os.path.join(tDir, os.path.basename(f))
+				result = mt.copyFile(f, tDir,safe=True, hardLink=True)
+				self.assertTrue(result)
+				self.assertTrue(os.path.exists(os.path.join(tDir, os.path.basename(f))), tDir +":" +f)
+				
+				result2 = mt.copyFile(f, os.path.join(tDir2, os.path.basename(f)),hardLink=True)
+				self.assertTrue(result2)
+				
+				self.assertTrue(os.path.exists(os.path.join(tDir2, os.path.basename(f))), tDir +":" +f)
+				s = set(mt.getTags(os.path.join(tDir, os.path.basename(f))))
+				s2 = set(mt.getTags(os.path.join(tDir2, os.path.basename(f))))
+				s3 = set(values[0])
+				self.assertTrue( s ==  s3, str(s) + "\n" +str(s3))
+				self.assertTrue( s2 ==  s3, str(s2) + "\n" +str(s3))
+		shutil.rmtree(tDir2)
+		self.assertFalse(os.path.exists(tDir2))
+		
+		self.assertTrue(mt.copyFile(tDir, tDir2))
+		self.assertTrue(os.path.isdir(tDir2))
+		for f, v in self.testFilesTags.items():
+			newloc = os.path.join(tDir2, os.path.basename(f))
+			self.assertTrue(os.path.exists(newloc), newloc)
+			self.assertTrue(set(mt.getTags(newloc)) == set(v[0]), newloc)
+		
+		shutil.rmtree(tDir2)
+		self.assertFalse(os.path.exists(tDir2))
+		self.assertTrue(mt.checkDir(tDir2))
+		
+		self.assertTrue(mt.copyFile(tDir, tDir2))
+		self.assertTrue(os.path.isdir(tDir2))
+		for f, v in self.testFilesTags.items():
+			newloc = os.path.join(tDir2, os.path.join(os.path.basename(tDir), os.path.basename(f)))
+			self.assertTrue(os.path.exists(newloc), newloc)
+			self.assertTrue(set(mt.getTags(newloc)) == set(v[0]), newloc)
+		
+	
 		
 	def test6_moveFile(self):
+		
 		destDir = os.path.join(testdatadir, "moveFiles")
 		destFile = "/.nowhere/.somewhere/anywhere.ext/fred.txt"
 		destFile2 = os.path.join(testdatadir, "moveF/test/dir/yes.ds")
