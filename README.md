@@ -1,6 +1,6 @@
 MyTags
 ========
-This is a set of tools, mostly in python, providing basic functionality for a tagging files in a cross-platform way that is compatible with [TagSpaces](http://tagspaces.org) "sidecar" metafiles. A file's (or folder's) tags are stored in a JSON "sidecar" metafile in the .ts directory of the file's (or folder's) parent directory; each file's metafile has the same name as its originating file with an appended ".json" extension. This is being developed on Linux (Mint versions 18.1, 19.1/1/2, and 20 have all been tested), but with the hopes that it could be (eventually) usable across platforms.
+This is a set of tools, mostly in python, providing basic functionality for a tagging files in a cross-platform way that is compatible with [TagSpaces](http://tagspaces.org) "sidecar" metafiles. A file's (or folder's) tags are stored in a JSON "sidecar" metafile in the .ts directory of the file's (or folder's) parent directory; each file's metafile has the same name as its originating file with an appended ".json" extension. This is being developed on Linux (Mint versions 18, 19, and 20 have all been tested), but with the hopes that it could be (eventually) usable across platforms.
 
 This project can also be integrated with the Nemo file manager (tested with versions 3.2.2 up to 4.6.4), using the nemo-python package to extend it (`mytags-nemo-extension.py` goes into `~/.local/share/nemo-python/extensions`, and the `src` directory must be in your `PYTHONPATH` environment variable; more info below).  Some basic integration with the Recoll engine and tmsu is also implemented. (See installation instructions below.)
 
@@ -59,7 +59,7 @@ Requirements:
     * libnemo-extension-dev
 * For indexing, either or both: 
   * [Recoll](https://www.lesbonscomptes.com/recoll) 1.23+. (For `apt-get`, you may need to add `ppa:recoll-backports/recoll-1.15-on` to your repositories [e.g., `sudo add-apt-repository ppa:recoll-backports/recoll-1.15-on`]).
-  * [tmsu](https://tmsu.org) (Source code available [here at github](https://github.com/oniony/TMSU). The tmsu binary needs to be in your environment `PATH`.
+  * [tmsu](https://tmsu.org) (Source code available [here at github](https://github.com/oniony/TMSU).) The tmsu binary needs to be in your environment `PATH`.
 
 There may be other requirements that I've overlooked...
 
