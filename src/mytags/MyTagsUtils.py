@@ -608,11 +608,23 @@ def removeUnusedLocks(metadir):
 				#print "Ext ("+ext+") is not '.lock'"
 		
 def printTags(tags):
-	print " ".join(tags)
+	if (tags):
+		print " ".join(tags)
 	
 def cl_getTags(args):
 	printTags(getTags(args.filename, False))
 	
+def cl_addTags(args):
+	addTags(args.filename,args.tags)
+	
+def cl_removeTags(args):
+	removeSomeTags(args.filename, args.tags)
+	
+def cl_removeAllTags(args):
+	removeAllTags(args.filename)
+
+def cl_replaceTags(args):
+	replaceTags(args.filename, args.tags)
 
 def commandLine():
 	#print sys.argv
@@ -621,10 +633,34 @@ def commandLine():
 	parser = argparse.ArgumentParser(description='Manage file/folder tags in sidecar files (.ts)')
 	#parser.add_argument('command', metavar='[command]', type=int, nargs='+', help='an integer for the accumulator')
 	subparsers = parser.add_subparsers(help='[command] help')
-	parser_tags = subparsers.add_parser('tags', help='get help')
+	parser_tags = subparsers.add_parser('tags', help='tags help')
 	parser_tags.add_argument('filename', metavar='Filename', type=str, help='Filename')
 	parser_tags.set_defaults(func=cl_getTags)
 	#parser_get.add_argument('tag', metavar='tag', type=str, nargs = '+', help='tag')
+	
+	# add tags command:
+	parser_add = subparsers.add_parser('add', help='add help')
+	parser_add.add_argument('filename', metavar='Filename', type=str, help='Filename')
+	parser_add.add_argument('tags', metavar="tag", type=str, nargs="+", help='Tags')
+	parser_add.set_defaults(func=cl_addTags)
+	
+	#remove tags command:
+	parser_remove = subparsers.add_parser('remove', help='remove help')
+	parser_remove.add_argument('filename', metavar='Filename', type=str, help='Filename')
+	parser_remove.add_argument('tags', metavar="tag", type=str, nargs="+", help='Tags')
+	parser_remove.set_defaults(func=cl_removeTags)
+	
+	#removeALL tags command:
+	parser_removeAll = subparsers.add_parser('remove-all', help='remove-all help')
+	parser_removeAll.add_argument('filename', metavar='Filename', type=str, help='Filename')
+	parser_removeAll.set_defaults(func=cl_removeAllTags)
+	
+	#replace tags command:
+	parser_replace = subparsers.add_parser('replace', help='replace help')
+	parser_replace.add_argument('filename', metavar='Filename', type=str, help='Filename')
+	parser_replace.add_argument('tags', metavar="tag", type=str, nargs="+", help='Tags')
+	parser_replace.set_defaults(func=cl_replaceTags)
+	
 	args = parser.parse_args()
 	args.func(args)
 	

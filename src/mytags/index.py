@@ -208,14 +208,17 @@ class UpdateIndexQueueThread(threading.Thread):
 				self.queueLock.wait()
 				print "received notify! going into action..."
 			(command, files) = self.queue.pop(0)
+			print "About to convert links..."
+			realfiles = [mt.getRealPath(f) for f in files]
+			# print ("Realfiles = " + str(realfiles))
 			self.queueLock.release()
 			
 			
-			print "About to run command '" +command + "', with args: [" + ",".join(files) + " ]"
+			print "About to run command '" +command + "', with args: [" + ",".join(realfiles) + " ]"
 			if (command == "update"):
-				self.updateIndexBatch(files)
+				self.updateIndexBatch(realfiles)
 			elif (command == "remove"):
-				self.removeBatch(files)
+				self.removeBatch(realfiles)
 				print " removed file."
 			
 		
