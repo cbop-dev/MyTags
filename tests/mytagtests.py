@@ -2,6 +2,9 @@
 	==========
 	NB: some of this is written using UNIX-like directory separators ("/"), and would need to be modified to work on windows.
 '''
+from __future__ import print_function
+from builtins import str
+from builtins import object
 import unittest
 import sys
 import os
@@ -47,7 +50,7 @@ class TestWithFiles(unittest.TestCase):
 	def setUp(self):
 		self.assertTrue(mt.checkDir(testdatadir))
 		
-		for filename, values in self.testFilesTags.items():
+		for filename, values in list(self.testFilesTags.items()):
 			mt.write(filename, "Test file!")
 			success = mt.write(mt.getMetaFileName(filename), values[1])
 			
@@ -83,7 +86,7 @@ class myTagTests(object):
 		
 	
 	def runTest(self):
-		print "Running our tests..."
+		print("Running our tests...")
 		
 		result = unittest.TextTestRunner(verbosity=2).run(self.suite())
 
@@ -187,10 +190,10 @@ class addTagsTest(TestWithFiles):
 	def test4_BulkAdd(self):
 		tags = ["tag_1", "another-tag", "waiting", "long_qw@$!@$", "fun-times!", "rancid"]
 		
-		(success, failures) = mt.addTagsBulk(self.testFilesTags.keys(), tags)
+		(success, failures) = mt.addTagsBulk(list(self.testFilesTags.keys()), tags)
 		self.assertTrue(success, failures)
 		
-		for filename, values in self.testFilesTags.items():
+		for filename, values in list(self.testFilesTags.items()):
 			
 			
 			self.assertTrue(len(mt.getTags(filename)) == len(set(values[0]) | set(tags)), len(mt.getTags(filename)))
@@ -204,7 +207,7 @@ class addTagsTest(TestWithFiles):
 		self.assertFalse(success, "Should not have been able to write metafile to /.ts !")
 		
 	def test5_AddToMalformedMetaFile(self):
-		for filename, values in self.testFilesTags.items():
+		for filename, values in list(self.testFilesTags.items()):
 			mt.write(mt.getMetaFileName(filename), '{"tags":[{"title":"yes",{"title":"no"}]}')
 			
 			mt.addTags(filename, values[0])
@@ -218,12 +221,12 @@ class addTagsTest(TestWithFiles):
 					'{"tags":[{"title":"wAiting","type":"sidecar","style":""},{"title":"high","type":"sidecar","style":"color: #ffffff !important; background-color: #ff7537 !important;"},{"title":"20170426","type":"sidecar","style":""},{"title":"test","type":"sidecar","style":"color: #ffffff !important; background-color: #008000 !important;"}],"appVersionCreated":"2.6.0","appName":"TagSpaces","appVersionUpdated":"2.6.0","lastUpdated":"2017-04-27T03:46:04.342Z"}'
 					]}
 		self.setUp()
-		for filename, values in self.testFilesTags.items():
+		for filename, values in list(self.testFilesTags.items()):
 			self.assertTrue( set(values[0]) == set(mt.getTags(filename)), mt.getTags(filename))
 			
 	def test3_AddExistingTags(self):
 		#(success,failures) = mt.addTags(
-		for filename, values in self.testFilesTags.items():
+		for filename, values in list(self.testFilesTags.items()):
 			mt.addTags(filename, values[0])
 			self.assertTrue(set(values[0]) == set(mt.getTags(filename)), filename + ": "+ str(values[0]) + " != " + str(mt.getTags(filename)))
 			self.assertTrue(len(values[0]) == len(mt.getTags(filename)), filename +": " +str(values[0]) + " != " + str(mt.getTags(filename)))
@@ -252,14 +255,14 @@ class CaseInsensitiveTagsTest(TestWithFiles):
 						
 					 }
 	def test1_getTags(self):
-		for filename, values in self.testFilesTags.items():
+		for filename, values in list(self.testFilesTags.items()):
 			self.assertTrue(set(values[0]) == set(mt.getTags(filename)))
 			
 	def test2_addTags(self):
 		rawtags = ["fRed", "fred", "FReD", "jack-is-nimBLe"]
 		actualTags = ["fred", "jack-is-nimble"]
 		
-		for filename, values in self.testFilesTags.items():
+		for filename, values in list(self.testFilesTags.items()):
 			self.assertTrue(mt.addTags(filename,rawtags))
 			self.assertTrue(set(mt.getTags(filename)) - set(values[0]) == set(actualTags), str(actualTags) + "; " + str(mt.getTags(filename)))
 			
@@ -280,13 +283,13 @@ class DeleteTagsTest(TestWithFiles):
 					 }
 			
 	def test8_removeAllTags(self):	
-		for filename, values in self.testFilesTags.items():			
+		for filename, values in list(self.testFilesTags.items()):			
 			self.assertTrue(mt.removeAllTags(filename), "removeAlltags returned false for " + filename)
 			self.assertFalse(mt.getTags(filename), filename + "|".join(mt.getTags(filename)))
 		
 	def test8_removeSomeTags(self):	
 		removeTags = set(["low", "longe-tag-with-several-hyphens", "non-existingtag", " BAD tag"])
-		for filename, values in self.testFilesTags.items():			
+		for filename, values in list(self.testFilesTags.items()):			
 			oTags = set(mt.getTags(filename))
 			
 			oTags = set(mt.getTags(filename))
@@ -313,7 +316,7 @@ class ReplaceTagsTest(TestWithFiles):
 	def test1_replaceTags(self):
 		tags = ["faith", "hope", "charity!", "somethingelse", "@nevermore"]
 		
-		for filename, values in self.testFilesTags.items():
+		for filename, values in list(self.testFilesTags.items()):
 			self.assertTrue(mt.replaceTags(filename, tags), filename)
 			self.assertTrue(set(mt.getTags(filename)) == set(tags), filename + ", new tags: " + str(mt.getTags(filename)) + "; should be: "+ str(tags))
 		
@@ -335,7 +338,7 @@ class FileOperationsTest(TestWithFiles):
 		self.validMetaFiles = {"/home/fred/jack/jill at hom/.ts/wilfredos/.ts/jacks.txt.json":"/home/fred/jack/jill at hom/.ts/wilfredos/jacks.txt",
 				 "/.ts/.ts.json":"/.ts",
 				 "/office/janson/docs/pdfs/.ts/.json.json":"/office/janson/docs/pdfs/.json"}
-		for meta, pFile in self.validMetaFiles.items():
+		for meta, pFile in list(self.validMetaFiles.items()):
 			self.assertTrue(mt.getParentFile(meta) == pFile, mt.getParentFile(meta) + " : " + pFile)
 			
 	def test2_deleteFile(self):		
@@ -405,7 +408,7 @@ class FileOperationsTest(TestWithFiles):
 		
 		
 	def test2_deleteMetaFile(self):
-		for f in self.testFilesTags.keys():
+		for f in list(self.testFilesTags.keys()):
 			self.assertTrue(os.path.exists(mt.getMetaFileName(f)))
 			mt.deleteMetaFile(f)
 			self.assertFalse(mt.getTags(f))
@@ -417,11 +420,11 @@ class FileOperationsTest(TestWithFiles):
 				"/funny folder./sub directory/file.ext":"/funny folder./sub directory/.ts/file.ext.lock",
 				"relative folder/directory/jacks.txt":"relative folder/directory/.ts/jacks.txt.lock"}
 				
-		for f, flock in data.items():
+		for f, flock in list(data.items()):
 			self.assertTrue(flock == mt.getLockFileName(f))
 			
 	def test4_getLockFile(self):
-		for f in self.testFilesTags.keys():
+		for f in list(self.testFilesTags.keys()):
 			lockname = mt.getLockFileName(f)
 			lock = mt.getLockFile(f)
 			if lock:
@@ -435,7 +438,7 @@ class FileOperationsTest(TestWithFiles):
 		tDir2 = os.path.join(testdatadir, "tmpsss")
 		
 		if mt.checkDir(tDir):
-			for f, values in self.testFilesTags.items():
+			for f, values in list(self.testFilesTags.items()):
 				mt.addTags(f, values[0])
 				self.assertTrue(set(mt.getTags(f)) == set(values[0]))
 				#print "copying " + f + " to "+ tDir# +os.path.join(tDir, os.path.basename(f))
@@ -456,7 +459,7 @@ class FileOperationsTest(TestWithFiles):
 		
 		self.assertTrue(mt.copyFile(tDir, tDir2))
 		self.assertTrue(os.path.isdir(tDir2))
-		for f, v in self.testFilesTags.items():
+		for f, v in list(self.testFilesTags.items()):
 			newloc = os.path.join(tDir2, os.path.basename(f))
 			self.assertTrue(os.path.exists(newloc), newloc)
 			self.assertTrue(set(mt.getTags(newloc)) == set(v[0]), newloc)
@@ -467,7 +470,7 @@ class FileOperationsTest(TestWithFiles):
 		
 		self.assertTrue(mt.copyFile(tDir, tDir2))
 		self.assertTrue(os.path.isdir(tDir2))
-		for f, v in self.testFilesTags.items():
+		for f, v in list(self.testFilesTags.items()):
 			newloc = os.path.join(tDir2, os.path.join(os.path.basename(tDir), os.path.basename(f)))
 			self.assertTrue(os.path.exists(newloc), newloc)
 			self.assertTrue(set(mt.getTags(newloc)) == set(v[0]), newloc)
@@ -477,7 +480,7 @@ class FileOperationsTest(TestWithFiles):
 		tDir2 = os.path.join(testdatadir, "tmpsss")
 		
 		if mt.checkDir(tDir):
-			for f, values in self.testFilesTags.items():
+			for f, values in list(self.testFilesTags.items()):
 				mt.addTags(f, values[0])
 				self.assertTrue(set(mt.getTags(f)) == set(values[0]))
 				#print "copying " + f + " to "+ tDir# +os.path.join(tDir, os.path.basename(f))
@@ -499,7 +502,7 @@ class FileOperationsTest(TestWithFiles):
 		
 		self.assertTrue(mt.copyFile(tDir, tDir2))
 		self.assertTrue(os.path.isdir(tDir2))
-		for f, v in self.testFilesTags.items():
+		for f, v in list(self.testFilesTags.items()):
 			newloc = os.path.join(tDir2, os.path.basename(f))
 			self.assertTrue(os.path.exists(newloc), newloc)
 			self.assertTrue(set(mt.getTags(newloc)) == set(v[0]), newloc)
@@ -510,7 +513,7 @@ class FileOperationsTest(TestWithFiles):
 		
 		self.assertTrue(mt.copyFile(tDir, tDir2))
 		self.assertTrue(os.path.isdir(tDir2))
-		for f, v in self.testFilesTags.items():
+		for f, v in list(self.testFilesTags.items()):
 			newloc = os.path.join(tDir2, os.path.join(os.path.basename(tDir), os.path.basename(f)))
 			self.assertTrue(os.path.exists(newloc), newloc)
 			self.assertTrue(set(mt.getTags(newloc)) == set(v[0]), newloc)
@@ -523,7 +526,7 @@ class FileOperationsTest(TestWithFiles):
 		destFile = "/.nowhere/.somewhere/anywhere.ext/fred.txt"
 		destFile2 = os.path.join(testdatadir, "moveF/test/dir/yes.ds")
 		
-		for f, v in self.testFilesTags.items():
+		for f, v in list(self.testFilesTags.items()):
 			dest = os.path.join(os.path.dirname(f), os.path.join(destDir, os.path.basename(f)))
 			result = mt.moveFile(f,dest)
 			self.assertTrue(result != '')

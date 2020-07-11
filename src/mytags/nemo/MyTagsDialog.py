@@ -1,9 +1,14 @@
 #!/usr/bin/python
 
-from Tkinter import *           # Importing the Tkinter (tool box) library 
-import tkSimpleDialog
-import tkMessageBox
-import tkFileDialog
+from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from past.utils import old_div
+from tkinter import *           # Importing the Tkinter (tool box) library 
+import tkinter.simpledialog
+import tkinter.messagebox
+import tkinter.filedialog
 import getopt
 #import commands
 #import pipes
@@ -13,7 +18,7 @@ import extendedui.DragDropListbox
 from TkTreectrl import *
 import mytags.MyTagsUtils as MyTagsUtils
 
-class MyTagsDialog(tkSimpleDialog.Dialog):
+class MyTagsDialog(tkinter.simpledialog.Dialog):
 	
 	
 	def __init__(self, master, filenames=[]):
@@ -24,21 +29,21 @@ class MyTagsDialog(tkSimpleDialog.Dialog):
 		for f in filenames:
 			self.tags[f] = MyTagsUtils.getMetaFileName(f)
 			
-		tkSimpleDialog.Dialog.__init__(self, master, "MyTags Tools")
+		tkinter.simpledialog.Dialog.__init__(self, master, "MyTags Tools")
 		
 		#print "init: self.filename = self.filename"
 	
 	def yview(self, *args):
-		apply(self.list.yview, args)
-		apply(self.b2.yview, args)			
+		self.list.yview(*args)
+		self.b2.yview(*args)			
 	
 	def buttonbox(self):
-		print "buttonbox()..."
+		print("buttonbox()...")
 		self.closebutton = Button(self, text="Done", command=self.close, height=3).pack()
 		
 
 	def body(self, master, ):
-		print "body called"
+		print("body called")
 				
 		
 		self.list = ScrolledMultiListbox(master, scrollmode="auto", width=800)
@@ -74,7 +79,7 @@ class MyTagsDialog(tkSimpleDialog.Dialog):
 		#return self.closebutton
         
 	def close(self):
-		print "Close button clicked. Closing window..."
+		print("Close button clicked. Closing window...")
 		#self.destroy()
 		self.master.destroy()
 		#filename = self.e1.get()
@@ -100,7 +105,7 @@ def main():
 	# and where it is placed
 	#root.geometry('%dx%d+%d+%d' % (w, h, x, y))
 	#root.geometry('+20+10')
-	root.geometry('+%d+%d' % (ws/2, hs/2))
+	root.geometry('+%d+%d' % (old_div(ws,2), old_div(hs,2)))
 	root.update()  # needed
 	root.withdraw()
 	# optional, show input dialogs without the Tkinter window
@@ -112,10 +117,10 @@ def main():
 		#print "You must supply an argument!!!"
 		#tkMessageBox.showwarning("Error", "You must supply an argument!")
 		#sys.exit(2)
-		filenames = tkFileDialog.askopenfilenames()
-		print filenames;
+		filenames = tkinter.filedialog.askopenfilenames()
+		print(filenames);
 		if (not filenames):
-			print "No input files given! Exiting..."
+			print("No input files given! Exiting...")
 			exit(1)
 		
 	else:

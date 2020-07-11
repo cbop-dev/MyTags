@@ -1,3 +1,4 @@
+from __future__ import print_function
 import unittest
 import sys
 import os
@@ -9,7 +10,7 @@ import os
 paths = ["src","lib"]
 for i in paths:
     sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/" + i)
-print sys.path
+print(sys.path)
 import mytags.MyTagsUtils as mt
 
 class MetaFileTest(unittest.TestCase):

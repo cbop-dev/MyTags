@@ -1,4 +1,6 @@
 #!/usr/bin/python
+from __future__ import print_function
+from builtins import str
 import os.path
 import os
 import fileinput
@@ -95,8 +97,8 @@ def __readFile(filename, uselock=True):
 			with open(filename) as myfile:
 				content = myfile.read()
 				
-	except (IOError, portalocker.exceptions.BaseLockException)  as e:
-		print e
+	except (IOError, portalocker.exceptions.BaseLockException) as e:
+		print(e)
 		pass
 	return content
 	
@@ -111,7 +113,7 @@ def __writeFile(filename, content):
 			with portalocker.Lock(filename, "w") as f:
 				f.write(content)
 		except (IOError, portalocker.exceptions.BaseLockException) as e:
-			print e
+			print(e)
 			return False
 	return True
 
@@ -152,7 +154,7 @@ def checkTags(tags):
 	
 def __getTagsFromData(data, raw=True):
 	if (raw):
-		data=data.replace('\n', '').decode("utf-8-sig")
+		data=data.replace('\n', '')
 	
 	tags = []
 	try:
@@ -229,7 +231,7 @@ def addTags(filename, tags):
 					mFile.seek(0)
 				#	print "addTAgs wrote content to " + metafile + ", new content is: " + mFile.read()
 			except portalocker.LockException as e:
-				print e
+				print(e)
 				return (False, None)
 	else: # main file didn't exist
 		#print "addTags did nothing, cause file didn't exist"
@@ -279,7 +281,7 @@ def removeSomeTags(filename, removeTags):
 	if (lock):
 		with lock:
 			if not os.path.exists(filename):
-				print "WHOA! removeSomeTags(" + filename + ") could not find the file!"
+				print("WHOA! removeSomeTags(" + filename + ") could not find the file!")
 				return False
 
 			#print "removeSomeTags("+filename+")...\n"
@@ -300,8 +302,8 @@ def removeSomeTags(filename, removeTags):
 						myfile.write(output)
 						#print "Wrote to :" + metafile  + " : " + __generateJSON(tags)
 			except IOError as e:
-				print "WHOA! removeSomeTags(" + filename + ") threw exception:"
-				print e
+				print("WHOA! removeSomeTags(" + filename + ") threw exception:")
+				print(e)
 				return False
 			#print os.path.isfile(filename)
 			#print "End of RemovesomeTags(" +filename+")...closed. Here's getTags():" + "|".join(getTags(filename))
@@ -416,7 +418,7 @@ def moveFile(src, dest, safe=True):
 									shutil.move(srcMeta, destMeta)
 								
 				except  (OSError, shutil.Error) as e:
-					print "\nCaught error in movefile() function:\n"
+					print("\nCaught error in movefile() function:\n")
 					#print e
 					reason = "caught error in renaming: "
 					reason += str(e)
@@ -500,7 +502,7 @@ def copyFile(src, dest, safe=True,hardLink=False):
 				except  OSError as e:
 					reason = "\nCaught error in copyfile() function:\n"
 					reason += str(e)
-					print reason
+					print(reason)
 					success = False
 		
 	#print "Copying file to "+  dest + " returning " + str(success and os.path.exists(dest)) 
@@ -562,10 +564,10 @@ def cleanMetaFolder(parentdir):
 				os.remove(f)
 				
 			else:
-				print "Not going to remove "+ f
+				print("Not going to remove "+ f)
 		removeUnusedLocks(metadir)
 	except (OSError, IOError) as e:
-		print "CleanMetaFoldr(" +parentdir+") caught exception: " + str(e)
+		print("CleanMetaFoldr(" +parentdir+") caught exception: " + str(e))
 
 # Returns list of .JSON metafiles (not parent files!) in the .ts folder of given "directory" that have no corresponding file in "directory'
 def findOrphanMetaFiles(directory):
@@ -589,7 +591,7 @@ def removeUnusedLocks(metadir):
 	#print "removeUnusedLocks("+metadir+"):\n"
 	if (os.path.isdir(metadir)):
 		for f in os.listdir(metadir):
-			print "checking " + f 
+			print("checking " + f) 
 			(root, ext) = os.path.splitext(f)
 			#print "root: " + root + ", ext = " + ext
 			if ext == ".lock":
@@ -609,7 +611,7 @@ def removeUnusedLocks(metadir):
 		
 def printTags(tags):
 	if (tags):
-		print " ".join(tags)
+		print(" ".join(tags))
 	
 def cl_getTags(args):
 	printTags(getTags(args.filename, False))

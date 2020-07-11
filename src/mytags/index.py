@@ -1,9 +1,15 @@
+from __future__ import print_function
+from __future__ import absolute_import
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import object
 import subprocess
 import argparse
 import threading
 from subprocess import Popen
-import MyTagsUtils as mt
-import config
+from . import MyTagsUtils as mt
+from . import config
 
 class RecollIndex(object):
 	def __init__(self, configfile):
@@ -23,7 +29,7 @@ class RecollIndex(object):
 		return self.p
 		
 	def updateIndexBatch(self, filenames):
-		print "RecollIndex.updateIndexBatch() called..."
+		print("RecollIndex.updateIndexBatch() called...")
 		self.lock.acquire()
 		if (self.p):
 			self.p.wait()
@@ -54,14 +60,14 @@ class RecollIndex(object):
 
 class TMSUIndex(object):
 	def __init__(self, configfile):
-		print "TMSUIndex.init()..."
+		print("TMSUIndex.init()...")
 		self.p = None
 		self.config=configfile
 	
 	def updateIndex(self,filename):
 		if (self.p):
 			self.p.wait()
-		print "TMSUIndex.updateIndex(" + filename +")"
+		print("TMSUIndex.updateIndex(" + filename +")")
 		self.p = Popen(["tmsu", "-D", self.config, "untag", "-a", filename])
 		
 		tags = mt.getTags(filename)
@@ -73,7 +79,7 @@ class TMSUIndex(object):
 		return self.p
 	
 	def updateIndexBatch(self, filenames):
-		print "TMSUIndex.updateIndexBatch()..."
+		print("TMSUIndex.updateIndexBatch()...")
 			
 		for f in filenames:
 			self.updateIndex(f)
@@ -81,7 +87,7 @@ class TMSUIndex(object):
 	def removeFile(self, filename):
 		if (self.p):
 			self.p.wait()
-		print "TMSUIndex.removeFile(" + filename +")"
+		print("TMSUIndex.removeFile(" + filename +")")
 		
 		self.p = Popen(["tmsu", "-D", self.config, "untag", "-a", filename])
 		
@@ -104,7 +110,7 @@ class UpdateIndexQueueThread(threading.Thread):
 	
 		self.indexThreads = {}
 		if config.tmsu:
-			print "enabled TMSU!"
+			print("enabled TMSU!")
 			self.indexThreads['tmsu'] = [TMSUIndex(config.tmsu_db), None]
 		if config.recoll:
 			self.indexThreads['recoll'] = [RecollIndex(config.recoll_config), None]
@@ -121,14 +127,14 @@ class UpdateIndexQueueThread(threading.Thread):
 
 	def queueFilesRemove(self,files, config=config.recoll_config):
 		#global index, indexThread, indexLock, queueLock, queue, p
-		print "queueing files to remove: " + " | ".join(files)
+		print("queueing files to remove: " + " | ".join(files))
 		
 		self.queueLock.acquire()
-		print "queueFilesRemove: Acquired queueuLock..."
+		print("queueFilesRemove: Acquired queueuLock...")
 		self.queue.append(("remove", files))
 		self.queueLock.notify()
 		self.queueLock.release()
-		print "queueFilesRemove: released queueuLock..."
+		print("queueFilesRemove: released queueuLock...")
 
 
 		
@@ -137,7 +143,7 @@ class UpdateIndexQueueThread(threading.Thread):
 		#if (self.p):
 		#	self.p.wait()
 				
-		for key, (index,thread) in self.indexThreads.items():
+		for key, (index,thread) in list(self.indexThreads.items()):
 			if (thread):
 				thread.join()
 			thread = threading.Thread(target=index.updateIndex, args=(filename))
@@ -151,7 +157,7 @@ class UpdateIndexQueueThread(threading.Thread):
 		
 	def updateIndexBatch(self,filenames, rconfig=config.recoll_config):	
 		#global index, indexThread, indexLock, queueLock, queue, p
-		print "updateIndexBatch() called..."
+		print("updateIndexBatch() called...")
 #		theThread = self.__getQueueThread__()
 #		theThread.join()
 		
@@ -159,7 +165,7 @@ class UpdateIndexQueueThread(threading.Thread):
 		#	print "updateIndexBatch waiting for process to finish..."
 		#	self.p.wait()
 		if (list(filenames) and len(filenames) > 0):
-			for key, (index,thread) in self.indexThreads.items():
+			for key, (index,thread) in list(self.indexThreads.items()):
 				if (thread):
 					thread.join()
 				thread = threading.Thread(target=index.updateIndexBatch, args=([filenames]))
@@ -172,7 +178,7 @@ class UpdateIndexQueueThread(threading.Thread):
 		#global index, indexThread, indexLock, queueLock, queue, p
 		#if (self.p):
 		#	self.p.wait()
-		for key, (index,thread) in self.indexThreads.items():
+		for key, (index,thread) in list(self.indexThreads.items()):
 			if (thread):
 				thread.join()
 			thread = threading.Thread(target=index.removeFile, args=(filename))
@@ -187,7 +193,7 @@ class UpdateIndexQueueThread(threading.Thread):
 			#print "waiting for process to finish..."
 			#self.p.wait()
 		if (list(filenames) and len(filenames) > 0):
-			for key, (index,thread) in self.indexThreads.items():
+			for key, (index,thread) in list(self.indexThreads.items()):
 				if (thread):
 					thread.join()
 				thread = threading.Thread(target=index.updateIndexBatch, args=([filenames]))
@@ -195,31 +201,31 @@ class UpdateIndexQueueThread(threading.Thread):
 				thread.start()
 				
 		else:
-			print "Don't have any files to remove..."
+			print("Don't have any files to remove...")
 
 	def run(self):
 		#global index, indexThread, indexLock, queueLock, queue, p
-		print "In Index main thread\n"
-		print "queue size is: " + str(len(self.queue))
+		print("In Index main thread\n")
+		print("queue size is: " + str(len(self.queue)))
 		while(not self.stop):
 			self.queueLock.acquire()
 			while (not self.queue):
-				print "index thread waiting for command queue to fill..."
+				print("index thread waiting for command queue to fill...")
 				self.queueLock.wait()
-				print "received notify! going into action..."
+				print("received notify! going into action...")
 			(command, files) = self.queue.pop(0)
-			print "About to convert links..."
+			print("About to convert links...")
 			realfiles = [mt.getRealPath(f) for f in files]
 			# print ("Realfiles = " + str(realfiles))
 			self.queueLock.release()
 			
 			
-			print "About to run command '" +command + "', with args: [" + ",".join(realfiles) + " ]"
+			print("About to run command '" +command + "', with args: [" + ",".join(realfiles) + " ]")
 			if (command == "update"):
 				self.updateIndexBatch(realfiles)
 			elif (command == "remove"):
 				self.removeBatch(realfiles)
-				print " removed file."
+				print(" removed file.")
 			
 		
 if __name__ == "__main__":

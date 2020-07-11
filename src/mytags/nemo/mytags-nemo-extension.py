@@ -1,11 +1,17 @@
+from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from past.utils import old_div
 import os
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import gi
 import inspect
 import sys
-from Tkinter import *		   # Importing the Tkinter (tool box) library 
-import tkSimpleDialog
-import tkMessageBox, tkFileDialog
+from tkinter import *		   # Importing the Tkinter (tool box) library 
+import tkinter.simpledialog
+import tkinter.messagebox, tkinter.filedialog
 
 gi.require_version('Nemo', '3.0')
 from gi.repository import GObject, Nemo
@@ -46,7 +52,7 @@ def getFilename(thefile):
 	return getCleanFilename(thefile.get_uri()[7:])
 
 def getCleanFilename(filename):
-	return urllib.unquote(filename.rstrip('\//'))
+	return urllib.parse.unquote(filename.rstrip('\//'))
 
 def getCleanFilenames(files):
 	cleanedFilenames = []
@@ -68,7 +74,7 @@ class MyTagsColumnExtension(GObject.GObject, Nemo.ColumnProvider, Nemo.InfoProvi
 		if file.get_uri_scheme() != 'file':
 			return
 		
-		filename = urllib.unquote(file.get_uri()[7:])
+		filename = urllib.parse.unquote(file.get_uri()[7:])
 		
 		file.add_string_attribute('tags', "|".join(mt.getTags(filename, uselock=False)))
 		return Nemo.OperationResult.COMPLETE
@@ -83,10 +89,10 @@ class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
 		ws = root.winfo_screenwidth() # width of the screen
 		hs = root.winfo_screenheight() # height of the screen
 
-		root.geometry('+%d+%d' % (ws/2, hs/2))
+		root.geometry('+%d+%d' % (old_div(ws,2), old_div(hs,2)))
 		root.update()
 		root.withdraw()	
-		textInput = tkSimpleDialog.askstring(title, label, parent=root,initialvalue=initialvalue)
+		textInput = tkinter.simpledialog.askstring(title, label, parent=root,initialvalue=initialvalue)
 		root.destroy()
 		return textInput
 	
@@ -103,7 +109,7 @@ class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
 		# and where it is placed
 		#root.geometry('%dx%d+%d+%d' % (w, h, x, y))
 		#root.geometry('+20+10')
-		root.geometry('+%d+%d' % (ws/2, hs/2))
+		root.geometry('+%d+%d' % (old_div(ws,2), old_div(hs,2)))
 		root.update()
 		return root
 
@@ -112,7 +118,7 @@ class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
 		
 		root = self.__getRootWin()
 		root.withdraw()
-		destDir = tkFileDialog.askdirectory(title=title, mustexist=True, initialdir=initialdir, parent=root)
+		destDir = tkinter.filedialog.askdirectory(title=title, mustexist=True, initialdir=initialdir, parent=root)
 		root.destroy()
 		return destDir
 	
@@ -120,10 +126,10 @@ class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
 		root = Tk()
 		ws = root.winfo_screenwidth() # width of the screen
 		hs = root.winfo_screenheight() # height of the screen
-		root.geometry('+%d+%d' % (ws/2, hs/2))
+		root.geometry('+%d+%d' % (old_div(ws,2), old_div(hs,2)))
 		root.update()
 		root.withdraw()	
-		result = tkMessageBox.showinfo(title, message, parent=root)
+		result = tkinter.messagebox.showinfo(title, message, parent=root)
 		root.destroy()
 		
 	
@@ -131,10 +137,10 @@ class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
 		root = Tk()
 		ws = root.winfo_screenwidth() # width of the screen
 		hs = root.winfo_screenheight() # height of the screen
-		root.geometry('+%d+%d' % (ws/2, hs/2))
+		root.geometry('+%d+%d' % (old_div(ws,2), old_div(hs,2)))
 		root.update()
 		root.withdraw()	
-		result = tkMessageBox.askyesno(title, message, parent=root)
+		result = tkinter.messagebox.askyesno(title, message, parent=root)
 		root.destroy()
 		return result
 		
@@ -144,10 +150,10 @@ class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
 		hs = root.winfo_screenheight() # height of the screen
 
 		#root.geometry('+20+10')
-		root.geometry('+%d+%d' % (ws/2, hs/2))
+		root.geometry('+%d+%d' % (old_div(ws,2), old_div(hs,2)))
 		root.update()
 		root.withdraw()	
-		tkMessageBox.showwarning(title, label, parent=root)
+		tkinter.messagebox.showwarning(title, label, parent=root)
 		root.destroy()
 	
 	def menu_erasetags(self, menu, files):
@@ -188,7 +194,7 @@ class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
 							failed.insert(0, f)
 					
 					if failed:
-						tkMessageBox.showwarning("Error", "Attempting to rplace tags from the following files failed: \n" + "\n".join(failed))
+						tkinter.messagebox.showwarning("Error", "Attempting to rplace tags from the following files failed: \n" + "\n".join(failed))
 						succeeded = list(set(cleanedFilenames) - set(failed))
 					else:
 						succeeded = cleanedFilenames
@@ -210,7 +216,7 @@ class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
 			if (badTags):
 				self.warning("Add Tags Failed", "Invalid tags: " + "\n".join(badTags))
 			else:
-				print "attempting to add [" + "|".join(tags) + "] to " + ";".join(cleanedFilenames)
+				print("attempting to add [" + "|".join(tags) + "] to " + ";".join(cleanedFilenames))
 				result = mt.addTagsBulk(cleanedFilenames, tags)
 			
 			
@@ -288,9 +294,9 @@ class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
 		
 		failedFiles = []
 		if (hardLink):
-			print "Trying to create hardlink: " + destDir + ":\n"
+			print("Trying to create hardlink: " + destDir + ":\n")
 		else:
-			print "Trying to copy files to " + destDir + ":\n"
+			print("Trying to copy files to " + destDir + ":\n")
 		
 		for f in cleanedFilenames:
 			
@@ -320,7 +326,7 @@ class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
 		if (destDir):
 			cleanedFilenames = getCleanFilenames(files)
 			failedFiles = []
-			print "Trying to move files to " + destDir + ":\n"
+			print("Trying to move files to " + destDir + ":\n")
 			
 			for f in cleanedFilenames:
 				
@@ -334,11 +340,11 @@ class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
 			removedfiles = []
 			
 			if (failedFiles):
-				tkMessageBox.showwarning("Move results:", "The following files/folders were NOT successfully moved:" + str(failedFiles), parent=root)
+				tkinter.messagebox.showwarning("Move results:", "The following files/folders were NOT successfully moved:" + str(failedFiles), parent=root)
 				movedFiles = list(set(cleanedFilenames)-set(failedFiles))
 				
 			else:
-				tkMessageBox.showinfo("Move Success", "Successfully moved the following files to " + destDir + ": \n" + "\n--".join(cleanedFilenames), parent=root)
+				tkinter.messagebox.showinfo("Move Success", "Successfully moved the following files to " + destDir + ": \n" + "\n--".join(cleanedFilenames), parent=root)
 				movedFiles = list(cleanedFilenames)
 				
 			removedFiles = list(movedFiles)
@@ -354,18 +360,18 @@ class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
 		root.withdraw()
 		
 		if (not len(files) == 1):
-			tkMessageBox.showwarning("Rename failed", "Only one file can be selected for renaming", parent=root)
+			tkinter.messagebox.showwarning("Rename failed", "Only one file can be selected for renaming", parent=root)
 		else:
 			
 			cleanedFilename = getCleanFilename(files[0].get_uri()[7:])
 			newname = os.path.join(os.path.dirname(cleanedFilename), getCleanFilename(self.simpleDialog("Rename", "Enter new filename: ", initialvalue=os.path.basename(cleanedFilename))))
 					
 			
-			print "Trying rename file " + cleanedFilename + " to: " + newname + ":\n"
+			print("Trying rename file " + cleanedFilename + " to: " + newname + ":\n")
 			
 			success =  mt.renameFile(cleanedFilename, newname)
 			if(not success):
-				tkMessageBox.showwarning("Rename failed", "Cannot rename to: " + newname + "\nPerhaps it already exists?", parent=root)
+				tkinter.messagebox.showwarning("Rename failed", "Cannot rename to: " + newname + "\nPerhaps it already exists?", parent=root)
 			else:
 				updateFiles(files, [newname], [cleanedFilename])
 			
@@ -387,7 +393,7 @@ class MyTagsMenuProvider(GObject.GObject, Nemo.MenuProvider):
 		confirmed = self.simpleConfirm("Clean Metafolder?", "Check and clean unnecessary files from metafolder?")
 		
 		if confirmed:
-			print "about to call cleanmetafolder"
+			print("about to call cleanmetafolder")
 			mt.cleanMetaFolder(getCleanFilename(getFilename(file)))
 		
 		

@@ -3,3 +3,7 @@
 tests/testdata/**
 
 tests/testdata/
+
+.ts/
+
+*.bak
