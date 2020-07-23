@@ -1,10 +1,5 @@
 #!/bin/bash
 
-#!/usr/bin/python
-#import mytags.MyTagsUtils as mt
-#mt.printTags(my.getTags(
-
-
 ##############################################################################
 # ts-tags - Lists tags for a file as found in 
 #           its metadata JSON file (./.ts/$1.json).
@@ -12,16 +7,11 @@
 #         - stdout: tags, one per line
 ##############################################################################
 
-#metafile=`dirname "$1"`/.ts/`basename "$1"`.json
 
-
-#if [[ -e "$metafile" ]]; then
-#	jq -r -M '.tags[] | .title' "$metafile" 2>/dev/null
-#fi
-if [ ! -z "$1" ]
+if [ "$#" -eq "1" ]
 then
-	python -m mytags.MyTagsUtils tags "$1"
-else
-	#python -m mytags.MyTagsUtils
-	echo "Missing argument: [filename]"
+	python -m mytags.MyTagsUtils tags "$@"
+else 
+	python -m mytags.MyTagsUtils "$@"
+
 fi
